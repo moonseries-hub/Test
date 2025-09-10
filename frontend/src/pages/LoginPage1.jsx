@@ -25,7 +25,7 @@ export default function LoginPage() {
     if (user) {
       localStorage.setItem("token", "my-secret-token");
       localStorage.setItem("role", user.role);
-      navigate(user.role === "admin" ? "/dashboard" : "/dashboard-staff");
+      navigate(user.role === "admin" ? "/" : "/dashboard-staff");
     } else {
       alert("Invalid credentials or role");
     }
@@ -35,7 +35,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-blue-900 to-blue-700">
       <div className="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md">
         <div className="mb-6 text-center">
-          <h1 className="text-4xl font-extrabold text-blue-900 mb-2">ASTHRA</h1>
+          <h1 className="text-4xl font-extrabold text-blue-900 mb-2">ASTRA</h1>
           <p className="text-gray-600 font-semibold">
             <span className="text-orange-500">A</span>dvanced&nbsp;
             <span className="text-orange-500">S</span>tock&nbsp;
@@ -79,7 +79,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center mt-6 text-gray-500 text-sm">
-          © 2025 ASTHRA 
+          © 2025 ASTRA 
         </p>
       </div>
     </div>

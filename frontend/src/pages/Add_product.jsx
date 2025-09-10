@@ -1,14 +1,12 @@
 import React, { useState } from "react";
 
 export default function AddProduct() {
-  // Mock categories
   const categories = [
     { id: "cat1", name: "Electronics" },
     { id: "cat2", name: "Mechanical" },
     { id: "cat3", name: "Chemicals" },
   ];
 
-  // Mock subcategories (keyed by category)
   const subCategoriesMap = {
     cat1: [
       { id: "sub1", name: "ICs" },
@@ -39,15 +37,18 @@ export default function AddProduct() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow-md">
-      <h2 className="text-xl font-bold mb-4 text-gray-700">Add Product</h2>
-      <form className="space-y-4" onSubmit={handleSubmit}>
+    <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg mt-8">
+      <h2 className="text-2xl font-bold mb-6 text-blue-900 border-b pb-2">
+        Add New Product
+      </h2>
+
+      <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleSubmit}>
         {/* Category */}
-        <div>
-          <label className="block text-sm font-medium">Category</label>
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Category</label>
           <select
             name="category"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={(e) => {
               setSelectedCategory(e.target.value);
               handleChange(e);
@@ -64,11 +65,11 @@ export default function AddProduct() {
         </div>
 
         {/* Sub Category */}
-        <div>
-          <label className="block text-sm font-medium">Sub Category</label>
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Sub Category</label>
           <select
             name="subCategory"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
             required
             disabled={!selectedCategory}
@@ -84,119 +85,120 @@ export default function AddProduct() {
         </div>
 
         {/* Make */}
-        <div>
-          <label className="block text-sm font-medium">Make</label>
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Make</label>
           <input
             type="text"
             name="make"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
             required
           />
         </div>
 
         {/* Model */}
-        <div>
-          <label className="block text-sm font-medium">Model</label>
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Model</label>
           <input
             type="text"
             name="model"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
             required
           />
         </div>
 
         {/* Specifications */}
-        <div>
-          <label className="block text-sm font-medium">Specifications</label>
+        <div className="md:col-span-2 flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Specifications</label>
           <textarea
             name="specifications"
             rows="3"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
           ></textarea>
         </div>
 
         {/* Serial Number */}
-        <div>
-          <label className="block text-sm font-medium">Serial No</label>
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Serial No</label>
           <input
             type="text"
             name="serialNumber"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
           />
         </div>
 
-        {/* Quantity Received */}
-        <div>
-          <label className="block text-sm font-medium">Quantity Received</label>
+        {/* Quantity */}
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Quantity Received</label>
           <input
             type="number"
             name="quantity"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
             required
           />
         </div>
 
         {/* Date of Receipt */}
-        <div>
-          <label className="block text-sm font-medium">Date of Receipt</label>
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Date of Receipt</label>
           <input
             type="date"
             name="dateOfReceipt"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
             required
           />
         </div>
 
         {/* Cost */}
-        <div>
-          <label className="block text-sm font-medium">Cost (with Tax)</label>
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Cost (with Tax)</label>
           <input
             type="number"
             name="cost"
             step="0.01"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
             required
           />
         </div>
 
         {/* Indent / PO */}
-        <div>
-          <label className="block text-sm font-medium">Indent / PO</label>
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">Indent / PO</label>
           <input
             type="text"
             name="po"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
           />
         </div>
 
-        {/* MIRV Cleared Date */}
-        <div>
-          <label className="block text-sm font-medium">MIRV Cleared Date</label>
+        {/* MIRV Date */}
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium text-gray-700">MIRV Cleared Date</label>
           <input
             type="date"
             name="mirvDate"
-            className="w-full border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             onChange={handleChange}
           />
         </div>
 
         {/* Submit */}
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
-        >
-          Add Product
-        </button>
+        <div className="md:col-span-2">
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition"
+          >
+            ➕ Add Product
+          </button>
+        </div>
       </form>
     </div>
   );
 }
-    

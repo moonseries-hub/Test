@@ -13,6 +13,8 @@ import {
   ChevronRight,
   Search,
   Bell,
+  LogOut,
+  MinusSquare,
 } from "lucide-react";
 import { Link, Outlet } from "react-router-dom";
 
@@ -20,8 +22,9 @@ export default function Layout() {
   const [issuesOpen, setIssuesOpen] = useState(false);
 
   const menuItems = [
-    { name: "Home / Dashboard", icon: <LayoutDashboard size={18} />, path: "/" },
+    { name: "Home", icon: <LayoutDashboard size={18} />, path: "/" },
     { name: "Add Product", icon: <PlusSquare size={18} />, path: "/add_product" },
+     { name: "Consume Product", icon: <MinusSquare size={18} />, path: "/consume_product" },
     { name: "Store", icon: <Package size={18} />, path: "/store" },
     { name: "Category", icon: <FolderTree size={18} />, path: "/category" },
     { name: "Orders", icon: <ShoppingCart size={18} />, path: "/orders" },
@@ -33,8 +36,9 @@ export default function Layout() {
         { name: "Track Issue", path: "/issues/track" },
       ],
     },
-    { name: "Report", icon: <FileText size={18} />, path: "/report" },
+    { name: "Report", icon: <FileText size={18} />, path: "/reportpage" },
     { name: "FAQ", icon: <HelpCircle size={18} />, path: "/faq" },
+    { name: "LOGOUT", icon: <LogOut size={18} />, path: "/LoginPage" },
   ];
 
   return (
