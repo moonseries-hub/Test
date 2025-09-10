@@ -1,31 +1,24 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import LoginPage from "./pages/LoginPage1";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
-import InventoryReceive from "./pages/InventoryReceive";
-import InventoryConsume from "./pages/InventoryConsume";
-import Categories from "./pages/Categories";
-import Reports from "./pages/Reports";
-import NotFound from "./pages/NotFoundPage";
+import AddProduct from "./pages/Add_product";
+import Store from "./pages/Store";
+// ... import other pages
 
-const PrivateRoute = ({ children }) => {
-  const token = localStorage.getItem("token");
-  return token ? children : <Navigate to="/login" />;
-};
-
-export default function App() {
+function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        <Route path="/inventory-receive" element={<PrivateRoute><InventoryReceive /></PrivateRoute>} />
-        <Route path="/inventory-consume" element={<PrivateRoute><InventoryConsume /></PrivateRoute>} />
-        <Route path="/categories" element={<PrivateRoute><Categories /></PrivateRoute>} />
-        <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
-        <Route path="*" element={<NotFound />} />
+        {/* Layout wraps all pages */}
+        <Route element={<Layout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/add_product" element={<AddProduct />} />
+          <Route path="/store" element={<Store />} />
+          {/* add other pages here */}
+        </Route>
       </Routes>
     </Router>
   );
 }
+
+export default App;
