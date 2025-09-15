@@ -62,7 +62,7 @@ export default function CategoryPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Categories & Subcategories</h1>
+      <h1 className="text-2xl font-bold mb-4">Categories</h1>
 
       {role === "admin" && (
         <div className="mb-4 flex gap-2">
@@ -103,25 +103,7 @@ export default function CategoryPage() {
               ))}
             </ul>
 
-            {role === "admin" && (
-              <div className="mt-2 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="New subcategory"
-                  value={newSub[cat._id] || ""}
-                  onChange={(e) =>
-                    setNewSub((prev) => ({ ...prev, [cat._id]: e.target.value }))
-                  }
-                  className="p-1 border rounded flex-1 text-sm"
-                />
-                <button
-                  onClick={() => addSubCategory(cat._id)}
-                  className="bg-green-500 text-white px-3 rounded text-sm hover:bg-green-600"
-                >
-                  Add Sub
-                </button>
-              </div>
-            )}
+           
           </li>
         ))}
       </ul>

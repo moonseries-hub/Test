@@ -14,8 +14,8 @@ export default function LoginPage1() {
     e.preventDefault();
 
     const users = [
-      { username: "admin", password: "1277", role: "admin" },
-      { username: "s", password: "1277staff", role: "staff" },
+      { username: "admin", password: "admin", role: "admin" },
+      { username: "staff", password: "staff", role: "staff" },
     ];
 
     const user = users.find(
