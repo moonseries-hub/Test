@@ -1,36 +1,35 @@
+// src/pages/LoginPage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 
-export default function LoginPage() {
+export default function LoginPage1() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("admin"); // default role
+  const [role, setRole] = useState("admin"); // default
   const navigate = useNavigate();
+  const { setUser } = useUser();
 
   const handleLogin = (e) => {
     e.preventDefault();
 
     const users = [
-      { username: "admin", password: "1234", role: "admin" },
-      { username: "staff", password: "1234", role: "staff" },
+      { username: "admin", password: "1277", role: "admin" },
+      { username: "s", password: "1277staff", role: "staff" },
     ];
 
     const user = users.find(
-      (u) =>
-        u.username === username &&
-        u.password === password &&
-        u.role === role
+      (u) => u.username === username && u.password === password && u.role === role
     );
 
     if (user) {
       localStorage.setItem("token", "my-secret-token");
       localStorage.setItem("role", user.role);
-      navigate(user.role === "admin" ? "/" : "/dashboard-staff");
-    } else {
-      alert("Invalid credentials or role");
-    }
-  };
+      setUser({ username: user.username, role: user.role });
 
+      navigate("/");
+  };
+  }
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-blue-900 to-blue-700">
       <div className="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md">
@@ -78,9 +77,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center mt-6 text-gray-500 text-sm">
-          © 2025 ASTRA 
-        </p>
+        <p className="text-center mt-6 text-gray-500 text-sm">© 2025 ASTRA</p>
       </div>
     </div>
   );
