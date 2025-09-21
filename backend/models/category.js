@@ -1,8 +1,9 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const CategorySchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
-  description: String,
-}, { timestamps: true });
+const categorySchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  subCategories: [{ name: String }],
+});
 
-module.exports = mongoose.model('Category', CategorySchema);
+// Check if model already exists to avoid OverwriteModelError
+module.exports = mongoose.models.Category || mongoose.model("Category", categorySchema);
