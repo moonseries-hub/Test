@@ -19,15 +19,16 @@ import {
 
 export default function Layout() {
   const [issuesOpen, setIssuesOpen] = useState(false);
-  const role = localStorage.getItem("role");
+  const role = localStorage.getItem("role") || "staff";
 
-  // Sidebar items same for both admin and staff
+  // Sidebar items
   const menuItems = [
     { name: "Home", icon: <LayoutDashboard size={18} />, path: role === "admin" ? "/" : "/dashboard-staff" },
     { name: "Add Product", icon: <PlusSquare size={18} />, path: "/add_product" },
     { name: "Consume Product", icon: <PlusSquare size={18} />, path: "/consume_product" },
     { name: "Store", icon: <Package size={18} />, path: "/store" },
-    { name: "Category", icon: <FolderTree size={18} />, path: "/categorypage" },
+    // Show Category only for admin
+    ...(role === "admin" ? [{ name: "Category", icon: <FolderTree size={18} />, path: "/categorypage" }] : []),
     { name: "Report", icon: <FileText size={18} />, path: "/reportpage" },
     { name: "Orders", icon: <ShoppingCart size={18} />, path: "/orders" },
     {
@@ -118,5 +119,3 @@ export default function Layout() {
     </div>
   );
 }
-
-

@@ -3,10 +3,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 
-export default function LoginPage1() {
+export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("admin"); // default
+  const [role, setRole] = useState("admin");
   const navigate = useNavigate();
   const { setUser } = useUser();
 
@@ -23,13 +23,17 @@ export default function LoginPage1() {
     );
 
     if (user) {
+      // Save user in localStorage and context
       localStorage.setItem("token", "my-secret-token");
       localStorage.setItem("role", user.role);
-      setUser({ username: user.username, role: user.role });
+      setUser({ username: user.username, role: user.role }); // triggers re-render
 
-      navigate("/");
+      navigate("/"); // redirect to dashboard
+    } else {
+      alert("Invalid credentials");
+    }
   };
-  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-blue-900 to-blue-700">
       <div className="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md">

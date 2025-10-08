@@ -1,23 +1,49 @@
 // src/pages/Store.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
-const initialProducts = [
-  { id: 101, name: "RISAT-2B Satellite", category: "Satellite", vendor: "ISRO", stock: 2, sold: 0, price: 5000000, status: "In stock" },
-  { id: 102, name: "Cartosat-3 Satellite", category: "Satellite", vendor: "ISRO", stock: 1, sold: 0, price: 7000000, status: "In stock" },
-  { id: 103, name: "Satellite Imaging Camera", category: "Sensor", vendor: "NRSC", stock: 0, sold: 2, price: 150000, status: "Out of stock" },
-  { id: 104, name: "Launch Vehicle Components", category: "Launch", vendor: "ISRO", stock: 50, sold: 10, price: 200000, status: "In stock" },
-  { id: 105, name: "Ground Station Antenna", category: "Ground Equipment", vendor: "NRSC", stock: 5, sold: 1, price: 50000, status: "In stock" },
-  { id: 106, name: "Remote Sensing Data Package", category: "Data Service", vendor: "NRSC", stock: 100, sold: 20, price: 5000, status: "In stock" },
-];
+const API_PRODUCTS = "http://localhost:5000/api/products";
 
 export default function Store() {
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState([]);
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      setProducts(products.filter(p => p.id !== id));
+  const fetchProducts = async () => {
+    try {
+      const res = await axios.get(API_PRODUCTS);
+      const data = res.data;
+
+      // Group by product (category + make + model)
+      const grouped = {};
+
+      data.forEach((p) => {
+        const key = `${p.category._id}-${p.make}-${p.model}`;
+        if (!grouped[key]) {
+          grouped[key] = {
+            _id: p._id,
+            productName: "", // blank initially
+            category: p.category.name,
+            vendor: p.make,
+            stock: p.quantity,
+            sold: 0,
+            price: p.cost / p.quantity,
+            status: "In stock",
+          };
+        } else {
+          // increase stock if same product added again
+          grouped[key].stock += p.quantity;
+          grouped[key].price = (grouped[key].price * (grouped[key].stock - p.quantity) + p.cost) / grouped[key].stock;
+        }
+      });
+
+      setProducts(Object.values(grouped));
+    } catch (err) {
+      console.error("Error fetching products:", err.response?.data || err.message);
     }
   };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   return (
     <div className="p-4">
@@ -34,29 +60,21 @@ export default function Store() {
               <th className="border px-2 py-1">Sold</th>
               <th className="border px-2 py-1">Price</th>
               <th className="border px-2 py-1">Status</th>
-              <th className="border px-2 py-1">Action</th>
             </tr>
           </thead>
           <tbody>
-            {products.map(p => (
-              <tr key={p.id} className="text-center">
-                <td className="border px-2 py-1">{p.id}</td>
-                <td className="border px-2 py-1">{p.name}</td>
+            {products.map((p) => (
+              <tr key={p._id} className="text-center">
+                <td className="border px-2 py-1">{p._id}</td>
+                <td className="border px-2 py-1">{p.productName}</td>
                 <td className="border px-2 py-1">{p.category}</td>
                 <td className="border px-2 py-1">{p.vendor}</td>
-                <td className={`border px-2 py-1 font-bold ${p.stock === 0 ? "bg-red-200" : "bg-green-200"}`}>{p.stock}</td>
-                <td className="border px-2 py-1">{p.sold}</td>
-                <td className="border px-2 py-1">{p.price.toLocaleString()}</td>
-                <td className="border px-2 py-1">{p.status}</td>
-                <td className="border px-2 py-1 flex justify-center gap-2">
-                  <button className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">Edit</button>
-                  <button
-                    className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                    onClick={() => handleDelete(p.id)}
-                  >
-                    Delete
-                  </button>
+                <td className={`border px-2 py-1 font-bold ${p.stock === 0 ? "bg-red-200" : "bg-green-200"}`}>
+                  {p.stock}
                 </td>
+                <td className="border px-2 py-1">{p.sold}</td>
+                <td className="border px-2 py-1">{Number(p.price).toLocaleString()}</td>
+                <td className="border px-2 py-1">{p.status}</td>
               </tr>
             ))}
           </tbody>
