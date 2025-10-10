@@ -2,12 +2,30 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 
-const categorySchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true, trim: true },
-  subCategories: [{ name: { type: String, required: true, trim: true } }],
-});
+const Category = mongoose.model(
+  "Category",
+  new mongoose.Schema({
+    name: { type: String, required: true, unique: true, trim: true },
+    subCategories: [{ name: { type: String, required: true, trim: true } }],
+  })
+);
 
-const Category = mongoose.model("Category", categorySchema);
+const Product = mongoose.model(
+  "Product",
+  new mongoose.Schema({
+    category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
+    subCategory: { type: mongoose.Schema.Types.ObjectId },
+    make: String,
+    model: String,
+    specifications: String,
+    serialNumber: String,
+    quantity: Number,
+    dateOfReceipt: Date,
+    cost: Number,
+    po: String,
+    mirvDate: Date,
+  })
+);
 
 // GET all categories
 router.get("/", async (req, res) => {
@@ -22,16 +40,9 @@ router.get("/", async (req, res) => {
 // POST add category
 router.post("/", async (req, res) => {
   try {
-    const { name, role, subCategories } = req.body;
-    if (role !== "admin")
-      return res.status(403).json({ error: "Only admin can add categories" });
-
-    const category = new Category({
-      name,
-      subCategories: subCategories || [],
-    });
+    const category = new Category(req.body);
     await category.save();
-    res.json(category);
+    res.status(201).json(category);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -40,9 +51,7 @@ router.post("/", async (req, res) => {
 // POST add subcategory
 router.post("/:id/sub", async (req, res) => {
   try {
-    const { role, subName } = req.body;
-    if (role !== "admin")
-      return res.status(403).json({ error: "Only admin can add subcategories" });
+    const { subName } = req.body;
 
     const category = await Category.findById(req.params.id);
     if (!category) return res.status(404).json({ error: "Category not found" });
@@ -60,13 +69,13 @@ router.post("/:id/sub", async (req, res) => {
   }
 });
 
-// DELETE category
+// DELETE category & its products
 router.delete("/:id", async (req, res) => {
   try {
-    const { role } = req.body;
-    if (role !== "admin")
-      return res.status(403).json({ error: "Only admin can delete categories" });
+    // Delete all products under this category
+    await Product.deleteMany({ category: req.params.id });
 
+    // Delete the category itself
     const deleted = await Category.findByIdAndDelete(req.params.id);
     res.json(deleted);
   } catch (err) {
@@ -74,16 +83,23 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// DELETE subcategory
+// DELETE subcategory & its products
 router.delete("/:id/sub", async (req, res) => {
   try {
-    const { role, subName } = req.body;
-    if (role !== "admin")
-      return res.status(403).json({ error: "Only admin can delete subcategories" });
+    const { subName } = req.body;
 
     const category = await Category.findById(req.params.id);
     if (!category) return res.status(404).json({ error: "Category not found" });
 
+    const subToDelete = category.subCategories.find(
+      (sub) => sub.name.toLowerCase() === subName.trim().toLowerCase()
+    );
+    if (!subToDelete) return res.status(404).json({ error: "Subcategory not found" });
+
+    // Delete products under this subcategory
+    await Product.deleteMany({ subCategory: subToDelete._id });
+
+    // Remove subcategory from category
     category.subCategories = category.subCategories.filter(
       (sub) => sub.name.toLowerCase() !== subName.trim().toLowerCase()
     );
