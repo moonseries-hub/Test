@@ -121,29 +121,35 @@ export default function AddProduct() {
       <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleSubmit}>
         {/* Product Name */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Product Name</label>
+          <label htmlFor="productName" className="mb-1 text-sm font-medium text-gray-700">
+            Product Name
+          </label>
           <input
+            id="productName"
             type="text"
             name="productName"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.productName}
             onChange={handleChange}
             required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
         {/* Category */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Category</label>
+          <label htmlFor="category" className="mb-1 text-sm font-medium text-gray-700">
+            Category
+          </label>
           <select
+            id="category"
             name="category"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.category}
             onChange={(e) => {
               setSelectedCategory(e.target.value);
               handleChange(e);
             }}
             required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">Select category</option>
             {categories.map((cat) => (
@@ -154,14 +160,17 @@ export default function AddProduct() {
 
         {/* Subcategory Select */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Sub Category</label>
+          <label htmlFor="subCategory" className="mb-1 text-sm font-medium text-gray-700">
+            Sub Category
+          </label>
           <select
+            id="subCategory"
             name="subCategory"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.subCategory}
             onChange={handleChange}
             required
             disabled={!selectedCategory}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">Select sub category</option>
             {selectedCategory &&
@@ -173,9 +182,12 @@ export default function AddProduct() {
 
         {/* Add Subcategory Input */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Add Subcategory</label>
+          <label htmlFor="newSubCategoryName" className="mb-1 text-sm font-medium text-gray-700">
+            Add Subcategory
+          </label>
           <div className="flex gap-2">
             <input
+              id="newSubCategoryName"
               type="text"
               placeholder="New Subcategory Name"
               className="border rounded-lg px-3 py-2 flex-1 focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -196,115 +208,142 @@ export default function AddProduct() {
 
         {/* Make */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Make</label>
+          <label htmlFor="make" className="mb-1 text-sm font-medium text-gray-700">
+            Make
+          </label>
           <input
+            id="make"
             type="text"
             name="make"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.make}
             onChange={handleChange}
             required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
         {/* Model */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Model</label>
+          <label htmlFor="model" className="mb-1 text-sm font-medium text-gray-700">
+            Model
+          </label>
           <input
+            id="model"
             type="text"
             name="model"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.model}
             onChange={handleChange}
             required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
         {/* Specifications */}
         <div className="md:col-span-2 flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Specifications</label>
+          <label htmlFor="specifications" className="mb-1 text-sm font-medium text-gray-700">
+            Specifications
+          </label>
           <textarea
+            id="specifications"
             name="specifications"
             rows="3"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.specifications}
             onChange={handleChange}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           ></textarea>
         </div>
 
         {/* Serial Number */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Serial No</label>
+          <label htmlFor="serialNumber" className="mb-1 text-sm font-medium text-gray-700">
+            Serial No
+          </label>
           <input
+            id="serialNumber"
             type="text"
             name="serialNumber"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.serialNumber}
             onChange={handleChange}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
         {/* Quantity */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Quantity Received</label>
+          <label htmlFor="quantity" className="mb-1 text-sm font-medium text-gray-700">
+            Quantity Received
+          </label>
           <input
+            id="quantity"
             type="number"
             name="quantity"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.quantity}
             onChange={handleChange}
             required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
         {/* Date of Receipt */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Date of Receipt</label>
+          <label htmlFor="dateOfReceipt" className="mb-1 text-sm font-medium text-gray-700">
+            Date of Receipt
+          </label>
           <input
+            id="dateOfReceipt"
             type="date"
             name="dateOfReceipt"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.dateOfReceipt}
             onChange={handleChange}
             required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
         {/* Cost */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Cost (with Tax)</label>
+          <label htmlFor="cost" className="mb-1 text-sm font-medium text-gray-700">
+            Cost (with Tax)
+          </label>
           <input
+            id="cost"
             type="number"
-            name="cost"
             step="0.01"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            name="cost"
             value={formData.cost}
             onChange={handleChange}
             required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
-        {/* Indent / PO */}
+        {/* PO */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Indent / PO</label>
+          <label htmlFor="po" className="mb-1 text-sm font-medium text-gray-700">
+            Indent / PO
+          </label>
           <input
+            id="po"
             type="text"
             name="po"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.po}
             onChange={handleChange}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
         {/* MIRV Date */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">MIRV Cleared Date</label>
+          <label htmlFor="mirvDate" className="mb-1 text-sm font-medium text-gray-700">
+            MIRV Cleared Date
+          </label>
           <input
+            id="mirvDate"
             type="date"
             name="mirvDate"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.mirvDate}
             onChange={handleChange}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 

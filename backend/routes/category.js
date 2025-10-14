@@ -22,9 +22,8 @@ router.get("/", async (req, res) => {
 // POST add category
 router.post("/", async (req, res) => {
   try {
-    const { name, role, subCategories } = req.body;
-    if (role !== "admin")
-      return res.status(403).json({ error: "Only admin can add categories" });
+    const { name, subCategories } = req.body;  // <-- fix here
+    if (!name) return res.status(400).json({ error: "Category name is required" });
 
     const category = new Category({
       name,
@@ -40,9 +39,8 @@ router.post("/", async (req, res) => {
 // POST add subcategory
 router.post("/:id/sub", async (req, res) => {
   try {
-    const { role, subName } = req.body;
-    if (role !== "admin")
-      return res.status(403).json({ error: "Only admin can add subcategories" });
+    const { subName } = req.body;  // <-- fix here
+    if (!subName) return res.status(400).json({ error: "Subcategory name is required" });
 
     const category = await Category.findById(req.params.id);
     if (!category) return res.status(404).json({ error: "Category not found" });
@@ -63,11 +61,8 @@ router.post("/:id/sub", async (req, res) => {
 // DELETE category
 router.delete("/:id", async (req, res) => {
   try {
-    const { role } = req.body;
-    if (role !== "admin")
-      return res.status(403).json({ error: "Only admin can delete categories" });
-
     const deleted = await Category.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Category not found" });
     res.json(deleted);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -77,9 +72,8 @@ router.delete("/:id", async (req, res) => {
 // DELETE subcategory
 router.delete("/:id/sub", async (req, res) => {
   try {
-    const { role, subName } = req.body;
-    if (role !== "admin")
-      return res.status(403).json({ error: "Only admin can delete subcategories" });
+    const { subName } = req.body;  // <-- fix here
+    if (!subName) return res.status(400).json({ error: "Subcategory name is required" });
 
     const category = await Category.findById(req.params.id);
     if (!category) return res.status(404).json({ error: "Category not found" });
