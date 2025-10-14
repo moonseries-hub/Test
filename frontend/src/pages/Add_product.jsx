@@ -24,6 +24,7 @@ export default function AddProduct() {
     mirvDate: "",
   });
 
+  // Fetch categories and map subcategories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -50,13 +51,14 @@ export default function AddProduct() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Add new subcategory
   const handleAddSubCategory = async () => {
     if (!selectedCategory || !newSubCategoryName) {
       return alert("Select category and enter subcategory name");
     }
     try {
-      await axios.post(`${API_URL}/categories/${selectedCategory}/subcategories`, {
-        name: newSubCategoryName,
+      await axios.post(`${API_URL}/categories/${selectedCategory}/sub`, {
+        subName: newSubCategoryName,
       });
       alert("✅ Subcategory added!");
       setNewSubCategoryName("");
@@ -79,6 +81,7 @@ export default function AddProduct() {
     }
   };
 
+  // Add new product
   const handleSubmit = async (e) => {
     e.preventDefault();
 

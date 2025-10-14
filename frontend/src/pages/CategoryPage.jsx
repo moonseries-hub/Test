@@ -31,7 +31,15 @@ export default function CategoryPage() {
     try {
       const payload = { name: newCat };
       if (newSubCat.trim()) payload.subCategories = [{ name: newSubCat.trim() }];
-      const res = await axios.post(API_URL, payload);
+      const token = localStorage.getItem("token"); // or however you store it
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
+      const res = await axios.post(API_URL, payload, config);
       setCategories([...categories, res.data]);
       setNewCat("");
       setNewSubCat("");
