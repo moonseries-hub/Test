@@ -7,10 +7,10 @@ const API_URL = "http://localhost:5000/api/categories";
 export default function CategoryPage() {
   const [categories, setCategories] = useState([]);
   const [newCat, setNewCat] = useState("");
-  const [newSubCat, setNewSubCat] = useState("");
-  const [newSub, setNewSub] = useState({});
+  const [newMake, setNewMake] = useState("");
+  const [newModel, setNewModel] = useState("");
 
-  // Fetch categories
+  // Fetch categories from backend
   const fetchCategories = async () => {
     try {
       const res = await axios.get(API_URL);
@@ -24,25 +24,24 @@ export default function CategoryPage() {
     fetchCategories();
   }, []);
 
-  // Add category
+  // Add new category
   const addCategory = async () => {
-    if (!newCat.trim()) return;
+    if (!newCat.trim()) return; // prevent empty category
 
     try {
-      const payload = { name: newCat };
-      if (newSubCat.trim()) payload.subCategories = [{ name: newSubCat.trim() }];
-      const token = localStorage.getItem("token"); // or however you store it
-
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const payload = {
+        name: newCat,
+        make: newMake || undefined,
+        model: newModel || undefined,
       };
 
-      const res = await axios.post(API_URL, payload, config);
+      const res = await axios.post(API_URL, payload);
       setCategories([...categories, res.data]);
+
+      // Clear input fields
       setNewCat("");
-      setNewSubCat("");
+      setNewMake("");
+      setNewModel("");
     } catch (err) {
       console.error(err.response?.data || err.message);
     }
@@ -51,34 +50,14 @@ export default function CategoryPage() {
   // Delete category
   const deleteCategory = async (id) => {
     try {
+      // Confirm deletion with user
+      if (!window.confirm("Are you sure you want to delete this category?")) return;
+
       await axios.delete(`${API_URL}/${id}`);
       setCategories(categories.filter((c) => c._id !== id));
     } catch (err) {
       console.error(err.response?.data || err.message);
-    }
-  };
-
-  // Add subcategory
-  const addSubCategory = async (catId) => {
-    const subName = newSub[catId]?.trim();
-    if (!subName) return;
-
-    try {
-      const res = await axios.post(`${API_URL}/${catId}/sub`, { subName });
-      setCategories(categories.map((c) => (c._id === catId ? res.data : c)));
-      setNewSub((prev) => ({ ...prev, [catId]: "" }));
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-    }
-  };
-
-  // Delete subcategory
-  const deleteSubCategory = async (catId, subName) => {
-    try {
-      const res = await axios.delete(`${API_URL}/${catId}/sub`, { data: { subName } });
-      setCategories(categories.map((c) => (c._id === catId ? res.data : c)));
-    } catch (err) {
-      console.error(err.response?.data || err.message);
+      alert("Failed to delete category. Make sure the server is running and the ID exists.");
     }
   };
 
@@ -92,7 +71,7 @@ export default function CategoryPage() {
       {/* Add Category */}
       <div className="mb-6 bg-white p-4 rounded-2xl shadow-md space-y-3">
         <h2 className="text-lg font-semibold text-gray-700">Add Category</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <input
             type="text"
             placeholder="New category"
@@ -102,9 +81,16 @@ export default function CategoryPage() {
           />
           <input
             type="text"
-            placeholder="Optional subcategory"
-            value={newSubCat}
-            onChange={(e) => setNewSubCat(e.target.value)}
+            placeholder="Make (optional)"
+            value={newMake}
+            onChange={(e) => setNewMake(e.target.value)}
+            className="p-2 border rounded-lg w-full focus:ring-2 focus:ring-orange-400 outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Model (optional)"
+            value={newModel}
+            onChange={(e) => setNewModel(e.target.value)}
             className="p-2 border rounded-lg w-full focus:ring-2 focus:ring-orange-400 outline-none"
           />
         </div>
@@ -124,52 +110,19 @@ export default function CategoryPage() {
           categories.map((cat) => (
             <div
               key={cat._id}
-              className="bg-white rounded-2xl shadow-md p-4 border border-gray-100"
+              className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 flex justify-between items-center"
             >
-              <div className="flex justify-between items-center">
+              <div>
                 <span className="text-lg font-semibold text-gray-800">{cat.name}</span>
-                <button
-                  onClick={() => deleteCategory(cat._id)}
-                  className="flex items-center gap-1 text-red-500 hover:text-red-700 text-sm font-medium"
-                >
-                  <Trash2 size={16} /> Delete
-                </button>
+                {cat.make && <span className="text-sm text-gray-500"> — {cat.make}</span>}
+                {cat.model && <span className="text-sm text-gray-400"> ({cat.model})</span>}
               </div>
-
-              <div className="ml-4 mt-3 space-y-2">
-                {cat.subCategories?.map((sub, idx) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg"
-                  >
-                    <span>• {sub.name}</span>
-                    <button
-                      onClick={() => deleteSubCategory(cat._id, sub.name)}
-                      className="text-xs flex items-center gap-1 text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 size={14} /> Delete
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-3 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="New subcategory"
-                  value={newSub[cat._id] || ""}
-                  onChange={(e) =>
-                    setNewSub((prev) => ({ ...prev, [cat._id]: e.target.value }))
-                  }
-                  className="p-2 border rounded-lg flex-grow focus:ring-2 focus:ring-green-400 outline-none"
-                />
-                <button
-                  onClick={() => addSubCategory(cat._id)}
-                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition"
-                >
-                  <Plus size={18} />
-                </button>
-              </div>
+              <button
+                onClick={() => deleteCategory(cat._id)}
+                className="flex items-center gap-1 text-red-500 hover:text-red-700 text-sm font-medium"
+              >
+                <Trash2 size={16} /> Delete
+              </button>
             </div>
           ))
         )}

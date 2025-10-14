@@ -1,4 +1,3 @@
-// src/pages/Store.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -12,30 +11,28 @@ export default function Store() {
       const res = await axios.get(API_PRODUCTS);
       const data = res.data;
 
-      // Group by product (category + make + model)
       const grouped = {};
 
-      data.forEach((p) => {
+      data.forEach(p => {
         const key = `${p.category._id}-${p.make}-${p.model}`;
+
         if (!grouped[key]) {
           grouped[key] = {
-            _id: p._id,
-            productName: "", // blank initially
+            productName: p.productName,
             category: p.category.name,
             vendor: p.make,
-            stock: p.quantity,
-            sold: 0,
-            price: p.cost / p.quantity,
-            status: "In stock",
+            model: p.model,
+            instock: p.instock,
+            sold: p.sold,
+            status: p.instock > 0 ? "available" : "out of stock",
           };
         } else {
-          // increase stock if same product added again
-          grouped[key].stock += p.quantity;
-          grouped[key].price = (grouped[key].price * (grouped[key].stock - p.quantity) + p.cost) / grouped[key].stock;
+          grouped[key].instock += p.instock;
+          grouped[key].sold += p.sold;
         }
       });
 
-      setProducts(Object.values(grouped));
+      setProducts(Object.entries(grouped));
     } catch (err) {
       console.error("Error fetching products:", err.response?.data || err.message);
     }
@@ -52,29 +49,29 @@ export default function Store() {
         <table className="w-full table-auto border-collapse border border-gray-200">
           <thead>
             <tr className="bg-gray-100 sticky top-0">
-              <th className="border px-2 py-1">Product ID</th>
               <th className="border px-2 py-1">Product Name</th>
               <th className="border px-2 py-1">Category</th>
-              <th className="border px-2 py-1">Vendor</th>
+              <th className="border px-2 py-1">Make</th>
+              <th className="border px-2 py-1">Model</th>
               <th className="border px-2 py-1">Stock</th>
               <th className="border px-2 py-1">Sold</th>
-              <th className="border px-2 py-1">Price</th>
               <th className="border px-2 py-1">Status</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
-              <tr key={p._id} className="text-center">
-                <td className="border px-2 py-1">{p._id}</td>
+            {products.map(([key, p]) => (
+              <tr key={key} className="text-center">
                 <td className="border px-2 py-1">{p.productName}</td>
                 <td className="border px-2 py-1">{p.category}</td>
                 <td className="border px-2 py-1">{p.vendor}</td>
-                <td className={`border px-2 py-1 font-bold ${p.stock === 0 ? "bg-red-200" : "bg-green-200"}`}>
-                  {p.stock}
+                <td className="border px-2 py-1">{p.model}</td>
+                <td className={`border px-2 py-1 font-bold ${p.instock === 0 ? "bg-red-200" : "bg-green-200"}`}>
+                  {p.instock}
                 </td>
                 <td className="border px-2 py-1">{p.sold}</td>
-                <td className="border px-2 py-1">{Number(p.price).toLocaleString()}</td>
-                <td className="border px-2 py-1">{p.status}</td>
+                <td className={`border px-2 py-1 font-bold ${p.status === "available" ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"}`}>
+                  {p.status}
+                </td>
               </tr>
             ))}
           </tbody>
