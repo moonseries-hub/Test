@@ -6,57 +6,39 @@ const API_URL = "http://localhost:5000/api"; // Backend base URL
 
 export default function AddProduct() {
   const [categories, setCategories] = useState([]);
-  const [subCategoriesMap, setSubCategoriesMap] = useState({});
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [newSubCategoryName, setNewSubCategoryName] = useState("");
+  const [locations, setLocations] = useState([]);
+  const [newLocationName, setNewLocationName] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [formData, setFormData] = useState({
     productName: "",
     category: "",
-    subCategory: "",
+    location: "",
     make: "",
     model: "",
-    specifications: "",
     serialNumber: "",
     quantity: "",
     dateOfReceipt: "",
     cost: "",
     po: "",
     mirvDate: "",
+    productUpdatingDate: "",
   });
 
-  const [products, setProducts] = useState([]);
-
-  // Fetch categories
+  // Fetch categories and locations
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const res = await axios.get(`${API_URL}/categories`);
-        setCategories(res.data);
-
-        const map = {};
-        res.data.forEach((cat) => {
-          map[cat._id] = cat.subCategories.map((sub) => ({
-            _id: sub._id,
-            name: sub.name,
-          }));
-        });
-        setSubCategoriesMap(map);
+        const [catRes, locRes] = await Promise.all([
+          axios.get(`${API_URL}/categories`),
+          axios.get(`${API_URL}/locations`),
+        ]);
+        setCategories(catRes.data);
+        setLocations(locRes.data);
       } catch (err) {
-        console.error("Error fetching categories:", err.response?.data || err.message);
+        console.error("Error fetching data:", err.response?.data || err.message);
       }
     };
-
-    const fetchProducts = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/products`);
-        setProducts(res.data);
-      } catch (err) {
-        console.error("Error fetching products:", err.response?.data || err.message);
-      }
-    };
-
-    fetchCategories();
-    fetchProducts();
+    fetchData();
   }, []);
 
   const handleChange = (e) => {
@@ -64,47 +46,26 @@ export default function AddProduct() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Add new subcategory
-  const handleAddSubCategory = async () => {
-    if (!selectedCategory || !newSubCategoryName) {
-      return alert("Select category and enter subcategory name");
-    }
+  // Add new location
+  const handleAddLocation = async () => {
+    if (!newLocationName.trim()) return alert("Enter location name");
     try {
-      await axios.post(`${API_URL}/categories/${selectedCategory}/sub`, {
-        subName: newSubCategoryName,
-      });
-      alert("✅ Subcategory added!");
-      setNewSubCategoryName("");
-
-      // Refresh categories
-      const res = await axios.get(`${API_URL}/categories`);
-      setCategories(res.data);
-
-      const map = {};
-      res.data.forEach((cat) => {
-        map[cat._id] = cat.subCategories.map((sub) => ({
-          _id: sub._id,
-          name: sub.name,
-        }));
-      });
-      setSubCategoriesMap(map);
+      const res = await axios.post(`${API_URL}/locations`, { name: newLocationName.trim() });
+      setLocations([...locations, res.data]);
+      setSelectedLocation(res.data._id);
+      setNewLocationName("");
+      alert("✅ Location added!");
     } catch (err) {
-      console.error("Error adding subcategory:", err.response?.data || err.message);
-      alert("❌ Failed to add subcategory");
+      console.error("Error adding location:", err.response?.data || err.message);
+      alert(err.response?.data?.error || "❌ Failed to add location");
     }
   };
 
   // Add new product
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      if (!subCategoriesMap[selectedCategory]?.some(sub => sub._id === formData.subCategory)) {
-        alert("⚠ Subcategory does not belong to selected category.");
-        return;
-      }
-
-      const res = await axios.post(`${API_URL}/products`, formData);
+      await axios.post(`${API_URL}/products`, formData);
       alert("✅ Product added successfully!");
 
       // Update local products list
@@ -114,21 +75,21 @@ export default function AddProduct() {
       setFormData({
         productName: "",
         category: "",
-        subCategory: "",
+        location: "",
         make: "",
         model: "",
-        specifications: "",
         serialNumber: "",
         quantity: "",
         dateOfReceipt: "",
         cost: "",
         po: "",
         mirvDate: "",
+        productUpdatingDate: "",
       });
-      setSelectedCategory("");
+      setSelectedLocation("");
     } catch (err) {
       console.error("Error adding product:", err.response?.data || err.message);
-      alert("❌ Failed to add product.");
+      alert(err.response?.data?.error || "❌ Failed to add product");
     }
   };
 
@@ -141,103 +102,229 @@ export default function AddProduct() {
       <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleSubmit}>
         {/* Product Name */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Product Name</label>
+          <label htmlFor="productName" className="mb-1 text-sm font-medium text-gray-700">
+            Product Name
+          </label>
           <input
+            id="productName"
             type="text"
             name="productName"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.productName}
             onChange={handleChange}
             required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
         {/* Category */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Category</label>
+          <label htmlFor="category" className="mb-1 text-sm font-medium text-gray-700">
+            Category
+          </label>
           <select
+            id="category"
             name="category"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.category}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              handleChange(e);
-            }}
+            onChange={handleChange}
             required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">Select category</option>
             {categories.map((cat) => (
-              <option key={cat._id} value={cat._id}>{cat.name}</option>
+              <option key={cat._id} value={cat._id}>
+                {cat.name}
+              </option>
             ))}
           </select>
         </div>
 
-        {/* Subcategory Select */}
+        {/* Location Select */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Sub Category</label>
+          <label htmlFor="location" className="mb-1 text-sm font-medium text-gray-700">
+            Location
+          </label>
           <select
-            name="subCategory"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.subCategory}
-            onChange={handleChange}
+            id="location"
+            name="location"
+            value={formData.location || selectedLocation}
+            onChange={(e) => {
+              setSelectedLocation(e.target.value);
+              handleChange(e);
+            }}
             required
-            disabled={!selectedCategory}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
-            <option value="">Select sub category</option>
-            {selectedCategory &&
-              subCategoriesMap[selectedCategory]?.map((sub) => (
-                <option key={sub._id} value={sub._id}>{sub.name}</option>
-              ))}
+            <option value="">Select location</option>
+            {locations.map((loc) => (
+              <option key={loc._id} value={loc._id}>
+                {loc.name}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* Add Subcategory */}
+        {/* Add New Location */}
         <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Add Subcategory</label>
+          <label htmlFor="newLocationName" className="mb-1 text-sm font-medium text-gray-700">
+            Add New Location
+          </label>
           <div className="flex gap-2">
             <input
+              id="newLocationName"
               type="text"
-              placeholder="New Subcategory Name"
+              placeholder="New Location Name"
               className="border rounded-lg px-3 py-2 flex-1 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              value={newSubCategoryName}
-              onChange={(e) => setNewSubCategoryName(e.target.value)}
-              disabled={!selectedCategory}
+              value={newLocationName}
+              onChange={(e) => setNewLocationName(e.target.value)}
             />
             <button
               type="button"
-              onClick={handleAddSubCategory}
+              onClick={handleAddLocation}
               className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-              disabled={!selectedCategory}
             >
               ➕ Add
             </button>
           </div>
         </div>
 
-        {/* Other Fields */}
-        {["make","model","serialNumber","quantity","dateOfReceipt","cost","po","mirvDate"].map(field => (
-          <div className="flex flex-col" key={field}>
-            <label className="mb-1 text-sm font-medium text-gray-700">{field.charAt(0).toUpperCase() + field.slice(1)}</label>
-            <input
-              type={field==="quantity" || field==="cost" ? "number" : field.includes("Date") ? "date" : "text"}
-              name={field}
-              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              value={formData[field]}
-              onChange={handleChange}
-              required={field==="quantity" || field==="dateOfReceipt" || field==="cost"}
-            />
-          </div>
-        ))}
-
-        {/* Specifications */}
-        <div className="md:col-span-2 flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Specifications</label>
-          <textarea
-            name="specifications"
-            rows="3"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.specifications}
+        {/* Make */}
+        <div className="flex flex-col">
+          <label htmlFor="make" className="mb-1 text-sm font-medium text-gray-700">
+            Make
+          </label>
+          <input
+            id="make"
+            type="text"
+            name="make"
+            value={formData.make}
             onChange={handleChange}
+            required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Model */}
+        <div className="flex flex-col">
+          <label htmlFor="model" className="mb-1 text-sm font-medium text-gray-700">
+            Model
+          </label>
+          <input
+            id="model"
+            type="text"
+            name="model"
+            value={formData.model}
+            onChange={handleChange}
+            required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Serial Number */}
+        <div className="flex flex-col">
+          <label htmlFor="serialNumber" className="mb-1 text-sm font-medium text-gray-700">
+            Serial Number
+          </label>
+          <input
+            id="serialNumber"
+            type="text"
+            name="serialNumber"
+            value={formData.serialNumber}
+            onChange={handleChange}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Quantity */}
+        <div className="flex flex-col">
+          <label htmlFor="quantity" className="mb-1 text-sm font-medium text-gray-700">
+            Quantity Received
+          </label>
+          <input
+            id="quantity"
+            type="number"
+            name="quantity"
+            value={formData.quantity}
+            onChange={handleChange}
+            required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Date of Receipt */}
+        <div className="flex flex-col">
+          <label htmlFor="dateOfReceipt" className="mb-1 text-sm font-medium text-gray-700">
+            Date of Receipt
+          </label>
+          <input
+            id="dateOfReceipt"
+            type="date"
+            name="dateOfReceipt"
+            value={formData.dateOfReceipt}
+            onChange={handleChange}
+            required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Cost */}
+        <div className="flex flex-col">
+          <label htmlFor="cost" className="mb-1 text-sm font-medium text-gray-700">
+            Cost (with Tax)
+          </label>
+          <input
+            id="cost"
+            type="number"
+            step="0.01"
+            name="cost"
+            value={formData.cost}
+            onChange={handleChange}
+            required
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        {/* PO */}
+        <div className="flex flex-col">
+          <label htmlFor="po" className="mb-1 text-sm font-medium text-gray-700">
+            Indent / PO
+          </label>
+          <input
+            id="po"
+            type="text"
+            name="po"
+            value={formData.po}
+            onChange={handleChange}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        {/* MIRV Cleared Date */}
+        <div className="flex flex-col">
+          <label htmlFor="mirvDate" className="mb-1 text-sm font-medium text-gray-700">
+            MIRV Cleared Date
+          </label>
+          <input
+            id="mirvDate"
+            type="date"
+            name="mirvDate"
+            value={formData.mirvDate}
+            onChange={handleChange}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Product Updating Date */}
+        <div className="flex flex-col">
+          <label htmlFor="productUpdatingDate" className="mb-1 text-sm font-medium text-gray-700">
+            Product Updating Date
+          </label>
+          <input
+            id="productUpdatingDate"
+            type="date"
+            name="productUpdatingDate"
+            value={formData.productUpdatingDate}
+            onChange={handleChange}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 

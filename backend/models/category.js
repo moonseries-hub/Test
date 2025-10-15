@@ -1,13 +1,23 @@
-// models/category.js
 import mongoose from "mongoose";
 
-const SubCategorySchema = new mongoose.Schema({
-  name: { type: String, required: true },
-});
+const categorySchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    make: {
+      type: String,
+      trim: true,
+    },
+    model: {
+      type: String,
+      trim: true,
+    },
+  },
+  { timestamps: true }
+);
 
-const CategorySchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  subCategories: [SubCategorySchema], // embedded subcategories
-});
-
-export default mongoose.model("Category", CategorySchema);
+export default mongoose.model("Category", categorySchema);
