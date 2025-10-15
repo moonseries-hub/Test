@@ -24,7 +24,9 @@ export default function AddProduct() {
     mirvDate: "",
   });
 
-  // Fetch categories and map subcategories
+  const [products, setProducts] = useState([]);
+
+  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -43,7 +45,18 @@ export default function AddProduct() {
         console.error("Error fetching categories:", err.response?.data || err.message);
       }
     };
+
+    const fetchProducts = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/products`);
+        setProducts(res.data);
+      } catch (err) {
+        console.error("Error fetching products:", err.response?.data || err.message);
+      }
+    };
+
     fetchCategories();
+    fetchProducts();
   }, []);
 
   const handleChange = (e) => {
@@ -91,9 +104,13 @@ export default function AddProduct() {
         return;
       }
 
-      await axios.post(`${API_URL}/products`, formData);
+      const res = await axios.post(`${API_URL}/products`, formData);
       alert("✅ Product added successfully!");
 
+      // Update local products list
+      setProducts(prev => [...prev, res.data]);
+
+      // Reset form
       setFormData({
         productName: "",
         category: "",
@@ -116,7 +133,7 @@ export default function AddProduct() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg mt-8">
+    <div className="max-w-5xl mx-auto bg-white p-8 rounded-2xl shadow-lg mt-8">
       <h2 className="text-2xl font-bold mb-6 text-blue-900 border-b pb-2">
         Add New Product
       </h2>
@@ -174,7 +191,7 @@ export default function AddProduct() {
           </select>
         </div>
 
-        {/* Add Subcategory Input */}
+        {/* Add Subcategory */}
         <div className="flex flex-col">
           <label className="mb-1 text-sm font-medium text-gray-700">Add Subcategory</label>
           <div className="flex gap-2">
@@ -197,31 +214,20 @@ export default function AddProduct() {
           </div>
         </div>
 
-        {/* Make */}
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Make</label>
-          <input
-            type="text"
-            name="make"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.make}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        {/* Model */}
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Model</label>
-          <input
-            type="text"
-            name="model"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.model}
-            onChange={handleChange}
-            required
-          />
-        </div>
+        {/* Other Fields */}
+        {["make","model","serialNumber","quantity","dateOfReceipt","cost","po","mirvDate"].map(field => (
+          <div className="flex flex-col" key={field}>
+            <label className="mb-1 text-sm font-medium text-gray-700">{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+            <input
+              type={field==="quantity" || field==="cost" ? "number" : field.includes("Date") ? "date" : "text"}
+              name={field}
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              value={formData[field]}
+              onChange={handleChange}
+              required={field==="quantity" || field==="dateOfReceipt" || field==="cost"}
+            />
+          </div>
+        ))}
 
         {/* Specifications */}
         <div className="md:col-span-2 flex flex-col">
@@ -231,82 +237,6 @@ export default function AddProduct() {
             rows="3"
             className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.specifications}
-            onChange={handleChange}
-          ></textarea>
-        </div>
-
-        {/* Serial Number */}
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Serial No</label>
-          <input
-            type="text"
-            name="serialNumber"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.serialNumber}
-            onChange={handleChange}
-          />
-        </div>
-
-        {/* Quantity */}
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Quantity Received</label>
-          <input
-            type="number"
-            name="quantity"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.quantity}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        {/* Date of Receipt */}
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Date of Receipt</label>
-          <input
-            type="date"
-            name="dateOfReceipt"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.dateOfReceipt}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        {/* Cost */}
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Cost (with Tax)</label>
-          <input
-            type="number"
-            name="cost"
-            step="0.01"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.cost}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        {/* Indent / PO */}
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">Indent / PO</label>
-          <input
-            type="text"
-            name="po"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.po}
-            onChange={handleChange}
-          />
-        </div>
-
-        {/* MIRV Date */}
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium text-gray-700">MIRV Cleared Date</label>
-          <input
-            type="date"
-            name="mirvDate"
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={formData.mirvDate}
             onChange={handleChange}
           />
         </div>
@@ -321,6 +251,37 @@ export default function AddProduct() {
           </button>
         </div>
       </form>
+
+      {/* Products Table */}
+      <div className="mt-10">
+        <h3 className="text-xl font-bold mb-4">All Products</h3>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th className="border px-2 py-1">Name</th>
+              <th className="border px-2 py-1">Category</th>
+              <th className="border px-2 py-1">Subcategory</th>
+              <th className="border px-2 py-1">Make</th>
+              <th className="border px-2 py-1">Model</th>
+              <th className="border px-2 py-1">Quantity</th>
+              <th className="border px-2 py-1">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p._id}>
+                <td className="border px-2 py-1">{p.productName}</td>
+                <td className="border px-2 py-1">{p.category.name}</td>
+                <td className="border px-2 py-1">{p.subCategory.name}</td>
+                <td className="border px-2 py-1">{p.make}</td>
+                <td className="border px-2 py-1">{p.model}</td>
+                <td className="border px-2 py-1">{p.quantity}</td>
+                <td className="border px-2 py-1">{p.cost}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

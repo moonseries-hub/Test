@@ -1,4 +1,3 @@
-// src/pages/LoginPage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
@@ -23,12 +22,9 @@ export default function LoginPage() {
     );
 
     if (user) {
-      // Save user in localStorage and context
-      localStorage.setItem("token", "my-secret-token");
-      localStorage.setItem("role", user.role);
-      setUser({ username: user.username, role: user.role }); // triggers re-render
-
-      navigate("/"); // redirect to dashboard
+      const token = "my-secret-token";
+      setUser({ username: user.username, role: user.role, token });
+      navigate("/");
     } else {
       alert("Invalid credentials");
     }
@@ -40,10 +36,10 @@ export default function LoginPage() {
         <div className="mb-6 text-center">
           <h1 className="text-4xl font-extrabold text-blue-900 mb-2">ASTRA</h1>
           <p className="text-gray-600 font-semibold">
-            <span className="text-orange-500">A</span>dvanced&nbsp;
-            <span className="text-orange-500">S</span>tock&nbsp;
-            <span className="text-orange-500">T</span>racking&nbsp;
-            <span className="text-orange-500">R</span>eporting&nbsp;
+            <span className="text-orange-500">A</span>dvanced{" "}
+            <span className="text-orange-500">S</span>tock{" "}
+            <span className="text-orange-500">T</span>racking{" "}
+            <span className="text-orange-500">R</span>eporting{" "}
             <span className="text-orange-500">A</span>pplication
           </p>
         </div>
@@ -51,21 +47,26 @@ export default function LoginPage() {
         <form className="flex flex-col gap-4" onSubmit={handleLogin}>
           <input
             type="text"
+            name="username"
             placeholder="Username"
             className="p-3 border rounded border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
           />
+
           <input
             type="password"
+            name="password"
             placeholder="Password"
             className="p-3 border rounded border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+
           <select
+            name="role"
             value={role}
             onChange={(e) => setRole(e.target.value)}
             className="p-3 border rounded border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -73,6 +74,7 @@ export default function LoginPage() {
             <option value="admin">Admin</option>
             <option value="staff">Staff</option>
           </select>
+
           <button
             type="submit"
             className="bg-orange-500 text-white py-3 rounded hover:bg-orange-600 font-bold transition"

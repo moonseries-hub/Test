@@ -1,9 +1,13 @@
-const mongoose = require("mongoose");
+// models/category.js
+import mongoose from "mongoose";
 
-const categorySchema = new mongoose.Schema({
+const SubCategorySchema = new mongoose.Schema({
   name: { type: String, required: true },
-  subCategories: [{ name: String }],
 });
 
-// Check if model already exists to avoid OverwriteModelError
-module.exports = mongoose.models.Category || mongoose.model("Category", categorySchema);
+const CategorySchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  subCategories: [SubCategorySchema], // embedded subcategories
+});
+
+export default mongoose.model("Category", CategorySchema);

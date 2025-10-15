@@ -1,114 +1,69 @@
-const express = require("express");
+// routes/categories.js
+import express from "express";
+import Category from "../models/category.js";
+
 const router = express.Router();
-const mongoose = require("mongoose");
 
-const Category = mongoose.model(
-  "Category",
-  new mongoose.Schema({
-    name: { type: String, required: true, unique: true, trim: true },
-    subCategories: [{ name: { type: String, required: true, trim: true } }],
-  })
-);
-
-const Product = mongoose.model(
-  "Product",
-  new mongoose.Schema({
-    category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
-    subCategory: { type: mongoose.Schema.Types.ObjectId },
-    make: String,
-    model: String,
-    specifications: String,
-    serialNumber: String,
-    quantity: Number,
-    dateOfReceipt: Date,
-    cost: Number,
-    po: String,
-    mirvDate: Date,
-  })
-);
-
-// GET all categories
+// Get all categories
 router.get("/", async (req, res) => {
   try {
-    const categories = await Category.find({});
+    const categories = await Category.find();
     res.json(categories);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// POST add category
+// Add new category
 router.post("/", async (req, res) => {
   try {
-    const category = new Category(req.body);
-    await category.save();
-    res.status(201).json(category);
+    const { name, subCategories } = req.body;
+    const newCategory = new Category({ name, subCategories });
+    const saved = await newCategory.save();
+    res.status(201).json(saved);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// POST add subcategory
+// Add subcategory to existing category
 router.post("/:id/sub", async (req, res) => {
   try {
     const { subName } = req.body;
-
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
+    if (!category) return res.status(404).json({ message: "Category not found" });
 
-    const exists = category.subCategories.some(
-      (sub) => sub.name.toLowerCase() === subName.trim().toLowerCase()
-    );
-    if (exists) return res.status(400).json({ error: "Subcategory already exists" });
-
-    category.subCategories.push({ name: subName.trim() });
-    await category.save();
-    res.json(category);
+    category.subCategories.push({ name: subName });
+    const saved = await category.save();
+    res.json(saved);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// DELETE category & its products
-router.delete("/:id", async (req, res) => {
-  try {
-    // Delete all products under this category
-    await Product.deleteMany({ category: req.params.id });
-
-    // Delete the category itself
-    const deleted = await Category.findByIdAndDelete(req.params.id);
-    res.json(deleted);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// DELETE subcategory & its products
+// Delete subcategory
 router.delete("/:id/sub", async (req, res) => {
   try {
     const { subName } = req.body;
-
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
+    if (!category) return res.status(404).json({ message: "Category not found" });
 
-    const subToDelete = category.subCategories.find(
-      (sub) => sub.name.toLowerCase() === subName.trim().toLowerCase()
-    );
-    if (!subToDelete) return res.status(404).json({ error: "Subcategory not found" });
-
-    // Delete products under this subcategory
-    await Product.deleteMany({ subCategory: subToDelete._id });
-
-    // Remove subcategory from category
-    category.subCategories = category.subCategories.filter(
-      (sub) => sub.name.toLowerCase() !== subName.trim().toLowerCase()
-    );
-
-    await category.save();
-    res.json(category);
+    category.subCategories = category.subCategories.filter((sub) => sub.name !== subName);
+    const saved = await category.save();
+    res.json(saved);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-module.exports = router;
+// Delete category
+router.delete("/:id", async (req, res) => {
+  try {
+    await Category.findByIdAndDelete(req.params.id);
+    res.json({ message: "Category deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+export default router;

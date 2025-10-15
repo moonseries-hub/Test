@@ -6,38 +6,37 @@ const API_PRODUCTS = "http://localhost:5000/api/products";
 
 export default function Store() {
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchProducts = async () => {
     try {
       const res = await axios.get(API_PRODUCTS);
       const data = res.data;
 
-      // Group by product (category + make + model)
       const grouped = {};
-
       data.forEach((p) => {
         const key = `${p.category._id}-${p.make}-${p.model}`;
         if (!grouped[key]) {
           grouped[key] = {
             _id: p._id,
-            productName: "", // blank initially
-            category: p.category.name,
+            productName: `${p.make} ${p.model}`,
+            category: p.category?.name || "—",
             vendor: p.make,
             stock: p.quantity,
             sold: 0,
-            price: p.cost / p.quantity,
-            status: "In stock",
+            price: (p.cost / p.quantity).toFixed(2),
+            status: p.quantity > 0 ? "In Stock" : "Out of Stock",
           };
         } else {
-          // increase stock if same product added again
           grouped[key].stock += p.quantity;
-          grouped[key].price = (grouped[key].price * (grouped[key].stock - p.quantity) + p.cost) / grouped[key].stock;
         }
       });
 
       setProducts(Object.values(grouped));
     } catch (err) {
-      console.error("Error fetching products:", err.response?.data || err.message);
+      console.error("❌ Error fetching products:", err.response?.data || err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -45,36 +44,59 @@ export default function Store() {
     fetchProducts();
   }, []);
 
+  if (loading)
+    return (
+      <div className="p-4 text-center text-gray-600">
+        ⏳ Loading Inventory...
+      </div>
+    );
+
   return (
-    <div className="p-4">
-      <h2 className="font-bold text-lg mb-4">NRSC/ISRO Inventory Dashboard</h2>
-      <div className="bg-white p-4 rounded-lg shadow overflow-x-auto max-h-[80vh]">
-        <table className="w-full table-auto border-collapse border border-gray-200">
-          <thead>
-            <tr className="bg-gray-100 sticky top-0">
-              <th className="border px-2 py-1">Product ID</th>
-              <th className="border px-2 py-1">Product Name</th>
-              <th className="border px-2 py-1">Category</th>
-              <th className="border px-2 py-1">Vendor</th>
-              <th className="border px-2 py-1">Stock</th>
-              <th className="border px-2 py-1">Sold</th>
-              <th className="border px-2 py-1">Price</th>
-              <th className="border px-2 py-1">Status</th>
+    <div className="p-6">
+      <h2 className="font-bold text-xl mb-4 text-gray-800">📦 NRSC/ISRO Inventory Dashboard</h2>
+
+      <div className="bg-white rounded-xl shadow-lg overflow-x-auto border border-gray-200">
+        <table className="w-full table-auto">
+          <thead className="bg-gray-100 text-gray-700 text-sm sticky top-0">
+            <tr>
+              <th className="border px-3 py-2">Product ID</th>
+              <th className="border px-3 py-2">Product Name</th>
+              <th className="border px-3 py-2">Category</th>
+              <th className="border px-3 py-2">Vendor</th>
+              <th className="border px-3 py-2">Stock</th>
+              <th className="border px-3 py-2">Sold</th>
+              <th className="border px-3 py-2">Price (₹)</th>
+              <th className="border px-3 py-2">Status</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
-              <tr key={p._id} className="text-center">
-                <td className="border px-2 py-1">{p._id}</td>
-                <td className="border px-2 py-1">{p.productName}</td>
-                <td className="border px-2 py-1">{p.category}</td>
-                <td className="border px-2 py-1">{p.vendor}</td>
-                <td className={`border px-2 py-1 font-bold ${p.stock === 0 ? "bg-red-200" : "bg-green-200"}`}>
+            {products.map((p, i) => (
+              <tr
+                key={p._id}
+                className={`text-center text-sm ${i % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
+              >
+                <td className="border px-2 py-2 text-gray-600">{p._id}</td>
+                <td className="border px-2 py-2 font-semibold">{p.productName}</td>
+                <td className="border px-2 py-2">{p.category}</td>
+                <td className="border px-2 py-2">{p.vendor}</td>
+                <td
+                  className={`border px-2 py-2 font-bold ${
+                    p.stock === 0 ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                  }`}
+                >
                   {p.stock}
                 </td>
-                <td className="border px-2 py-1">{p.sold}</td>
-                <td className="border px-2 py-1">{Number(p.price).toLocaleString()}</td>
-                <td className="border px-2 py-1">{p.status}</td>
+                <td className="border px-2 py-2">{p.sold}</td>
+                <td className="border px-2 py-2">₹{p.price}</td>
+                <td
+                  className={`border px-2 py-2 ${
+                    p.status === "In Stock"
+                      ? "text-green-700"
+                      : "text-red-600 font-medium"
+                  }`}
+                >
+                  {p.status}
+                </td>
               </tr>
             ))}
           </tbody>

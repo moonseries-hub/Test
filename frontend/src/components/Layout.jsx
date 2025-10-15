@@ -40,7 +40,7 @@ export default function Layout() {
       ],
     },
     { name: "FAQ", icon: <HelpCircle size={18} />, path: "/faq" },
-    { name: "LOGOUT", icon: <LogOut size={18} />, path: "/LoginPage" },
+    { name: "LOGOUT", icon: <LogOut size={18} />, path: "/LogoutPage" },
   ];
 
   return (
