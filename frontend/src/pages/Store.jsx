@@ -7,7 +7,6 @@ const API_CATEGORIES = "http://localhost:5000/api/categories";
 
 export default function Store() {
   const [products, setProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [filters, setFilters] = useState({
     category: "",
@@ -16,58 +15,50 @@ export default function Store() {
     status: "",
   });
 
-  // Fetch products & categories
-  const fetchData = async () => {
-    try {
-      const [prodRes, catRes] = await Promise.all([
-        axios.get(API_PRODUCTS),
-        axios.get(API_CATEGORIES),
-      ]);
-      setProducts(prodRes.data);
-      setFilteredProducts(prodRes.data);
-      setCategories(catRes.data);
-    } catch (err) {
-      console.error("❌ Error fetching data:", err.response?.data || err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [prodRes, catRes] = await Promise.all([
+          axios.get(API_PRODUCTS),
+          axios.get(API_CATEGORIES),
+        ]);
+        setProducts(prodRes.data);
+        setCategories(catRes.data);
+      } catch (err) {
+        console.error("Error fetching data:", err.response?.data || err.message);
+      }
+    };
     fetchData();
   }, []);
 
-  // Handle filter change
+  // Filter products based on current filters
+  const filteredProducts = products.filter((p) => {
+    if (filters.status) {
+      if (filters.status === "available" && p.instock === 0) return false;
+      if (filters.status === "out" && p.instock > 0) return false;
+    }
+    if (filters.category && p.category?._id !== filters.category) return false;
+    if (filters.make && p.make !== filters.make) return false;
+    if (filters.model && p.model !== filters.model) return false;
+    return true;
+  });
+
+  // Get makes and models based on selected category
+  const selectedCategory = categories.find((c) => c._id === filters.category);
+  const makeOptions = selectedCategory?.makes || [];
+  const modelOptions = selectedCategory?.models || [];
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    const newFilters = { ...filters, [name]: value };
-    setFilters(newFilters);
-
-    let filtered = [...products];
-
-    if (newFilters.category) {
-      filtered = filtered.filter(p => p.category?._id === newFilters.category);
-    }
-    if (newFilters.make) {
-      filtered = filtered.filter(p => p.make === newFilters.make);
-    }
-    if (newFilters.model) {
-      filtered = filtered.filter(p => p.model === newFilters.model);
-    }
-    if (newFilters.status) {
-      if (newFilters.status === "available") {
-        filtered = filtered.filter(p => p.instock > 0);
-      } else if (newFilters.status === "out") {
-        filtered = filtered.filter(p => p.instock === 0);
+    setFilters((prev) => {
+      let newFilters = { ...prev, [name]: value };
+      if (name === "category") {
+        newFilters.make = "";
+        newFilters.model = "";
       }
-    }
-
-    setFilteredProducts(filtered);
+      return newFilters;
+    });
   };
-
-  // Get unique makes and models for filters
-  const makes = [...new Set(products.map(p => p.make).filter(Boolean))];
-  const models = [...new Set(products.map(p => p.model).filter(Boolean))];
 
   return (
     <div className="p-4">
@@ -75,35 +66,65 @@ export default function Store() {
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow mb-4 flex flex-wrap gap-4">
+        {/* Category */}
         <div className="flex flex-col">
           <label>Category</label>
-          <select name="category" value={filters.category} onChange={handleFilterChange} className="border rounded px-3 py-2">
+          <select
+            name="category"
+            value={filters.category}
+            onChange={handleFilterChange}
+            className="border rounded px-3 py-2"
+          >
             <option value="">All</option>
-            {categories.map(c => (
+            {categories.map((c) => (
               <option key={c._id} value={c._id}>{c.name}</option>
             ))}
           </select>
         </div>
 
+        {/* Make */}
         <div className="flex flex-col">
           <label>Make</label>
-          <select name="make" value={filters.make} onChange={handleFilterChange} className="border rounded px-3 py-2">
+          <select
+            name="make"
+            value={filters.make}
+            onChange={handleFilterChange}
+            className="border rounded px-3 py-2"
+            disabled={!filters.category}
+          >
             <option value="">All</option>
-            {makes.map(m => <option key={m} value={m}>{m}</option>)}
+            {makeOptions.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
           </select>
         </div>
 
+        {/* Model */}
         <div className="flex flex-col">
           <label>Model</label>
-          <select name="model" value={filters.model} onChange={handleFilterChange} className="border rounded px-3 py-2">
+          <select
+            name="model"
+            value={filters.model}
+            onChange={handleFilterChange}
+            className="border rounded px-3 py-2"
+            disabled={!filters.category}
+          >
             <option value="">All</option>
-            {models.map(m => <option key={m} value={m}>{m}</option>)}
+            {modelOptions.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
           </select>
         </div>
 
+        {/* Status */}
         <div className="flex flex-col">
           <label>Status</label>
-          <select name="status" value={filters.status} onChange={handleFilterChange} className="border rounded px-3 py-2">
+          <select
+            name="status"
+            value={filters.status}
+            onChange={handleFilterChange}
+            className="border rounded px-3 py-2"
+          >
             <option value="">All</option>
             <option value="available">Available</option>
             <option value="out">Out of Stock</option>
@@ -126,16 +147,16 @@ export default function Store() {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map(p => (
+            {filteredProducts.map((p) => (
               <tr key={p._id} className="text-center">
                 <td className="border px-2 py-1">{p.productName}</td>
                 <td className="border px-2 py-1">{p.category?.name || "-"}</td>
                 <td className="border px-2 py-1">{p.make}</td>
-                <td className="border px-2 py-1">{p.model}</td>
+                <td className="border px-2 py-1">{p.model || "-"}</td>
                 <td className={`border px-2 py-1 font-bold ${p.instock === 0 ? "bg-red-200" : "bg-green-200"}`}>{p.instock}</td>
-                <td className="border px-2 py-1">{p.sold}</td>
+                <td className="border px-2 py-1">{p.sold || 0}</td>
                 <td className={`border px-2 py-1 font-bold ${p.instock > 0 ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"}`}>
-                  {p.instock > 0 ? "available" : "out of stock"}
+                  {p.instock > 0 ? "Available" : "Out of Stock"}
                 </td>
               </tr>
             ))}

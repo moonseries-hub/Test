@@ -7,50 +7,48 @@ import Dashboard from "./pages/Dashboard";
 import DashboardStaff from "./pages/DashboardStaff";
 import AddProduct from "./pages/Add_product";
 import Store from "./pages/Store";
-import ConsumeProduct from "./pages/Consume_product";
+import ConsumeProduct from "./pages/ConsumeProduct";
 import ReportPage from "./pages/ReportsPage";
 import CategoryPage from "./pages/CategoryPage";
+import Orders from "./pages/Orders";
 import LogoutPage from "./pages/LogoutPage";
 
 export default function App() {
   const { user } = useUser();
 
-  if (!user?.token) {
-    return (
-      <Router>
+  return (
+    <Router>
+      {!user?.token ? (
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Router>
-    );
-  }
+      ) : (
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
 
-  const role = user.role;
+          <Route element={<Layout />}>
+            {/* Default dashboard depending on role */}
+            <Route
+              index
+              element={user.role === "admin" ? <Dashboard /> : <DashboardStaff />}
+            />
 
-  return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
+            {/* Pages */}
+            <Route path="add_product" element={<AddProduct />} />
+            <Route path="store" element={<Store />} />
+            <Route path="consume_product" element={<ConsumeProduct />} />
+            <Route path="consume_product/:id" element={<ConsumeProduct />} />
+            <Route path="reportpage" element={<ReportPage />} />
+            <Route path="categorypage" element={<CategoryPage />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="logoutpage" element={<LogoutPage />} />
 
-        <Route element={<Layout />}>
-          <Route
-            index
-            element={role === "admin" ? <Dashboard /> : <DashboardStaff />}
-          />
-
-          <Route path="add_product" element={<AddProduct />} />
-          <Route path="consume_product" element={<ConsumeProduct />} />
-          <Route path="reportpage" element={<ReportPage />} />
-          <Route path="categorypage" element={<CategoryPage />} />
-          <Route path="store" element={<Store />} />
-          <Route path="LogoutPage" element={<LogoutPage />} />
-          
-          {/* Redirect unknown routes to home */}
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      )}
     </Router>
   );
 }

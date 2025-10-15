@@ -51,14 +51,14 @@ router.post("/", async (req, res) => {
       model,
       serialNumber,
       quantity,
-      instock: quantity, // initialize instock
+      instock: quantity, // Initialize stock equal to quantity
+      sold: 0,
       dateOfReceipt,
       cost,
       po,
       productUpdatingDate,
       mirvDate,
       consumptionRecords: [],
-      sold: 0,
     });
 
     res.status(201).json(product);
@@ -70,34 +70,35 @@ router.post("/", async (req, res) => {
 
 // PATCH consume product
 router.patch("/:id/consume", async (req, res) => {
-  const { id } = req.params;
   const { quantity, usedAtLocationId, date, remarks } = req.body;
 
+  if (!quantity || quantity <= 0)
+    return res.status(400).json({ error: "Invalid quantity" });
+
   try {
-    const product = await Product.findById(id);
+    const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found" });
 
-    if (quantity > product.instock) {
+    if (quantity > product.instock)
       return res.status(400).json({
-        error: `Quantity exceeds available stock. Available: ${product.instock}`,
+        error: `Not enough stock. Available: ${product.instock}`,
       });
-    }
 
     product.instock -= quantity;
-    product.sold += quantity;
+    product.sold = (product.sold || 0) + quantity;
+
     product.consumptionRecords.push({
       quantity,
-      usedAtLocation: usedAtLocationId,
-      date,
-      remarks,
+      usedAtLocation: usedAtLocationId || null,
+      date: date || new Date(),
+      remarks: remarks || "",
     });
 
     await product.save();
-
     res.json({ message: "Product consumed successfully", product });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Error consuming product" });
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -8,13 +8,13 @@ const categorySchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-    make: {
-      type: String,
-      trim: true,
+    makes: {
+      type: [String], // array of strings
+      default: [],
     },
-    model: {
-      type: String,
-      trim: true,
+    models: {
+      type: [String], // array of strings
+      default: [],
     },
   },
   { timestamps: true }

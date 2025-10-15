@@ -10,7 +10,7 @@ root.render(
   <React.StrictMode>
     <UserProvider>
       <CategoriesProvider>
-        <App />
+        <App /> {/* App contains the <Router>, do NOT wrap here */}
       </CategoriesProvider>
     </UserProvider>
   </React.StrictMode>
