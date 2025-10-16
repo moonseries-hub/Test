@@ -1,17 +1,21 @@
 import express from "express";
-import Product from "../models/product.js";
-import Category from "../models/Category.js";
-import Location from "../models/Location.js";
+import Product from "../models/Product.js";
 
 const router = express.Router();
 
-// GET all products
+// GET all products with nested populate
 router.get("/", async (req, res) => {
   try {
     const products = await Product.find()
       .populate("category", "name")
       .populate("location", "name")
+      .populate({
+        path: "consumptionRecords.usedAtLocation",
+        model: "Location",
+        select: "name",
+      })
       .sort({ createdAt: -1 });
+
     res.json(products);
   } catch (err) {
     console.error(err);
@@ -37,12 +41,6 @@ router.post("/", async (req, res) => {
       mirvDate,
     } = req.body;
 
-    const cat = await Category.findById(category);
-    if (!cat) return res.status(400).json({ error: "Category not found" });
-
-    const loc = await Location.findById(location);
-    if (!loc) return res.status(400).json({ error: "Location not found" });
-
     const product = await Product.create({
       productName,
       category,
@@ -51,7 +49,7 @@ router.post("/", async (req, res) => {
       model,
       serialNumber,
       quantity,
-      instock: quantity, // Initialize stock equal to quantity
+      instock: quantity,
       sold: 0,
       dateOfReceipt,
       cost,
@@ -99,6 +97,17 @@ router.patch("/:id/consume", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE product
+router.delete("/:id", async (req, res) => {
+  try {
+    const deleted = await Product.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Product not found" });
+    res.json({ message: "Product deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
