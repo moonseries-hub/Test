@@ -1,6 +1,7 @@
 // src/pages/Store.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { Trash2 } from "lucide-react"; // optional icon
 
 const API_PRODUCTS = "http://localhost:5000/api/products";
 const API_CATEGORIES = "http://localhost:5000/api/categories";
@@ -16,22 +17,35 @@ export default function Store() {
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [prodRes, catRes] = await Promise.all([
-          axios.get(API_PRODUCTS),
-          axios.get(API_CATEGORIES),
-        ]);
-        setProducts(prodRes.data);
-        setCategories(catRes.data);
-      } catch (err) {
-        console.error("Error fetching data:", err.response?.data || err.message);
-      }
-    };
     fetchData();
   }, []);
 
-  // Filter products based on current filters
+  const fetchData = async () => {
+    try {
+      const [prodRes, catRes] = await Promise.all([
+        axios.get(API_PRODUCTS),
+        axios.get(API_CATEGORIES),
+      ]);
+      setProducts(prodRes.data);
+      setCategories(catRes.data);
+    } catch (err) {
+      console.error("Error fetching data:", err.response?.data || err.message);
+    }
+  };
+
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    try {
+      await axios.delete(`${API_PRODUCTS}/${id}`);
+      setProducts((prev) => prev.filter((p) => p._id !== id));
+      alert("✅ Product deleted successfully!");
+    } catch (err) {
+      console.error("Error deleting product:", err.response?.data || err.message);
+      alert("❌ Failed to delete product.");
+    }
+  };
+
+  // Filtering logic
   const filteredProducts = products.filter((p) => {
     if (filters.status) {
       if (filters.status === "available" && p.instock === 0) return false;
@@ -43,7 +57,6 @@ export default function Store() {
     return true;
   });
 
-  // Get makes and models based on selected category
   const selectedCategory = categories.find((c) => c._id === filters.category);
   const makeOptions = selectedCategory?.makes || [];
   const modelOptions = selectedCategory?.models || [];
@@ -66,7 +79,6 @@ export default function Store() {
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow mb-4 flex flex-wrap gap-4">
-        {/* Category */}
         <div className="flex flex-col">
           <label>Category</label>
           <select
@@ -82,7 +94,6 @@ export default function Store() {
           </select>
         </div>
 
-        {/* Make */}
         <div className="flex flex-col">
           <label>Make</label>
           <select
@@ -99,7 +110,6 @@ export default function Store() {
           </select>
         </div>
 
-        {/* Model */}
         <div className="flex flex-col">
           <label>Model</label>
           <select
@@ -116,7 +126,6 @@ export default function Store() {
           </select>
         </div>
 
-        {/* Status */}
         <div className="flex flex-col">
           <label>Status</label>
           <select
@@ -132,7 +141,7 @@ export default function Store() {
         </div>
       </div>
 
-      {/* Product Table */}
+      {/* Table */}
       <div className="bg-white p-4 rounded-lg shadow overflow-x-auto max-h-[80vh]">
         <table className="w-full table-auto border-collapse border border-gray-200">
           <thead>
@@ -141,9 +150,10 @@ export default function Store() {
               <th className="border px-2 py-1">Category</th>
               <th className="border px-2 py-1">Make</th>
               <th className="border px-2 py-1">Model</th>
-              <th className="border px-2 py-1">Stock</th>
-              <th className="border px-2 py-1">Sold</th>
+              <th className="border px-2 py-1">In-Stock</th>
+              <th className="border px-2 py-1">Consumed</th>
               <th className="border px-2 py-1">Status</th>
+              <th className="border px-2 py-1">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -157,6 +167,14 @@ export default function Store() {
                 <td className="border px-2 py-1">{p.sold || 0}</td>
                 <td className={`border px-2 py-1 font-bold ${p.instock > 0 ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"}`}>
                   {p.instock > 0 ? "Available" : "Out of Stock"}
+                </td>
+                <td className="border px-2 py-1">
+                  <button
+                    onClick={() => handleDelete(p._id, p.productName)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 mx-auto"
+                  >
+                    <Trash2 size={16} /> Delete
+                  </button>
                 </td>
               </tr>
             ))}

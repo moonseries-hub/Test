@@ -30,7 +30,7 @@ export default function Layout() {
     // Show Category only for admin
     ...(role === "admin" ? [{ name: "Category", icon: <FolderTree size={18} />, path: "/categorypage" }] : []),
     { name: "Report", icon: <FileText size={18} />, path: "/reportpage" },
-    { name: "Orders", icon: <ShoppingCart size={18} />, path: "/orders" },
+    { name: "Consumptiopn History", icon: <ShoppingCart size={18} />, path: "/orders" },
     {
       name: "Issues",
       icon: <AlertTriangle size={18} />,
@@ -39,7 +39,7 @@ export default function Layout() {
         { name: "Track Issue", path: "/issues/track" },
       ],
     },
-    { name: "FAQ", icon: <HelpCircle size={18} />, path: "/faq" },
+ 
     { name: "LOGOUT", icon: <LogOut size={18} />, path: "/LogoutPage" },
   ];
 

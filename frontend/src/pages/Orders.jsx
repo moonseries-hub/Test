@@ -3,50 +3,68 @@ import axios from "axios";
 
 const API_PRODUCTS = "http://localhost:5000/api/products";
 
-export default function Orders() {
+export default function OrdersPage() {
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await axios.get(API_PRODUCTS);
-        setProducts(res.data);
-      } catch (err) {
-        console.error("Error fetching products:", err.response?.data || err.message);
-      }
-    };
     fetchProducts();
   }, []);
 
+  const fetchProducts = async () => {
+    try {
+      const res = await axios.get(API_PRODUCTS);
+      setProducts(res.data);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch products");
+    }
+  };
+
+  // Flatten all consumption records with product info
+  const consumptionRecords = products.flatMap((product) =>
+    product.consumptionRecords.map((record) => ({
+      productName: product.productName,
+      categoryName: product.category?.name || "-",
+      quantity: record.quantity,
+      usedAt: record.usedAtLocation?.name || "-",
+      date: record.date ? new Date(record.date) : null,
+      remarks: record.remarks || "-",
+    }))
+  );
+
   return (
-    <div className="p-4">
-      <h2 className="font-bold text-lg mb-4">Consumed Products / Orders</h2>
-      <div className="bg-white p-4 rounded-lg shadow overflow-x-auto max-h-[80vh]">
-        <table className="w-full table-auto border-collapse border border-gray-200">
-          <thead>
-            <tr className="bg-gray-100 sticky top-0">
-              <th className="border px-2 py-1">Product Name</th>
-              <th className="border px-2 py-1">Category</th>
-              <th className="border px-2 py-1">Make</th>
-              <th className="border px-2 py-1">Model</th>
-              <th className="border px-2 py-1">Consumed Quantity</th>
-              <th className="border px-2 py-1">Used At</th>
-              <th className="border px-2 py-1">Date</th>
-              <th className="border px-2 py-1">Remarks</th>
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-4">Consumption History</h2>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border border-gray-300">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border px-4 py-2 text-left">Product</th>
+              <th className="border px-4 py-2 text-left">Category</th>
+              <th className="border px-4 py-2 text-left">Quantity</th>
+              <th className="border px-4 py-2 text-left">Used At</th>
+              <th className="border px-4 py-2 text-left">Date</th>
+              <th className="border px-4 py-2 text-left">Remarks</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((p) =>
-              p.consumptionRecords.map((rec, idx) => (
-                <tr key={`${p._id}-${idx}`} className="text-center">
-                  <td className="border px-2 py-1">{p.productName}</td>
-                  <td className="border px-2 py-1">{p.category?.name || "-"}</td>
-                  <td className="border px-2 py-1">{p.make}</td>
-                  <td className="border px-2 py-1">{p.model || "-"}</td>
-                  <td className="border px-2 py-1">{rec.quantity}</td>
-                  <td className="border px-2 py-1">{rec.usedAtLocation?.name || "-"}</td>
-                  <td className="border px-2 py-1">{new Date(rec.date).toLocaleDateString()}</td>
-                  <td className="border px-2 py-1">{rec.remarks || "-"}</td>
+            {consumptionRecords.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="text-center p-4">
+                  No consumption records found.
+                </td>
+              </tr>
+            ) : (
+              consumptionRecords.map((rec, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="border px-4 py-2">{rec.productName}</td>
+                  <td className="border px-4 py-2">{rec.categoryName}</td>
+                  <td className="border px-4 py-2">{rec.quantity}</td>
+                  <td className="border px-4 py-2">{rec.usedAt}</td>
+                  <td className="border px-4 py-2">
+                    {rec.date ? rec.date.toLocaleDateString() : "-"}
+                  </td>
+                  <td className="border px-4 py-2">{rec.remarks}</td>
                 </tr>
               ))
             )}

@@ -1,4 +1,3 @@
-// src/pages/Consume_product.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -8,110 +7,191 @@ const API_LOCATIONS = "http://localhost:5000/api/locations";
 export default function ConsumeProduct() {
   const [products, setProducts] = useState([]);
   const [locations, setLocations] = useState([]);
-  const [form, setForm] = useState({
-    productId: "",
-    quantity: "",
-    usedAtLocationId: "",
-    date: "",
-    remarks: "",
-  });
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [newLocationName, setNewLocationName] = useState("");
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [prodRes, locRes] = await Promise.all([
-          axios.get(API_PRODUCTS),
-          axios.get(API_LOCATIONS),
-        ]);
-        setProducts(prodRes.data);
-        setLocations(locRes.data);
-      } catch (err) {
-        console.error("Error fetching data:", err.response?.data || err.message);
-      }
-    };
-    fetchData();
+    fetchProducts();
+    fetchLocations();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+  const fetchProducts = async () => {
+    try {
+      const res = await axios.get(API_PRODUCTS);
+      setProducts(res.data);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const fetchLocations = async () => {
+    try {
+      const res = await axios.get(API_LOCATIONS);
+      setLocations(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-    if (!form.productId || !form.quantity) {
-      return alert("Select a product and enter quantity");
+  // Add New Location
+  const handleAddLocation = async () => {
+    if (!newLocationName.trim()) return;
+    try {
+      const res = await axios.post(API_LOCATIONS, { name: newLocationName });
+      alert("Location added successfully!");
+      setSelectedLocation(res.data._id);
+      setNewLocationName("");
+      fetchLocations();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add location");
+    }
+  };
+
+  // Consume Product
+  const handleConsume = async () => {
+    if (!selectedProduct || !selectedLocation || !quantity) {
+      alert("Please fill all required fields.");
+      return;
+    }
+
+    const product = products.find((p) => p._id === selectedProduct);
+    if (!product) {
+      alert("Selected product not found.");
+      return;
+    }
+
+    // Quantity validation
+    if (Number(quantity) > product.instock) {
+      alert(
+        `Entered quantity (${quantity}) exceeds available stock (${product.instock}).`
+      );
+      return;
     }
 
     try {
-      const res = await axios.patch(`${API_PRODUCTS}/${form.productId}/consume`, {
-        quantity: parseInt(form.quantity),
-        usedAtLocationId: form.usedAtLocationId,
-        date: form.date || new Date(),
-        remarks: form.remarks,
+      await axios.patch(`${API_PRODUCTS}/${selectedProduct}/consume`, {
+        quantity: Number(quantity),
+        usedAtLocationId: selectedLocation,
+        remarks,
       });
 
-      alert(`✅ Consumed ${form.quantity} units of ${res.data.productName}`);
-      setForm({ productId: "", quantity: "", usedAtLocationId: "", date: "", remarks: "" });
+      alert("Consumed successfully!");
+      setQuantity("");
+      setSelectedProduct("");
+      setSelectedLocation("");
+      setRemarks("");
+      fetchProducts();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.error || "Failed to consume product");
+      alert("Failed to consume product");
     }
   };
 
   return (
-    <div className="p-4">
-      <h2 className="font-bold text-lg mb-4">Consume Product</h2>
-      <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg shadow max-w-md">
-        <div className="flex flex-col mb-3">
-          <label>Product</label>
-          <select name="productId" value={form.productId} onChange={handleChange} className="border px-3 py-2 rounded">
-            <option value="">Select a product</option>
-            {products.map((p) => (
-              <option key={p._id} value={p._id}>
-                {p.productName} (Available: {p.instock})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col mb-3">
-          <label>Quantity</label>
-          <input
-            type="number"
-            name="quantity"
-            value={form.quantity}
-            onChange={handleChange}
-            min="1"
-            className="border px-3 py-2 rounded"
-          />
-        </div>
-
-        <div className="flex flex-col mb-3">
-          <label>Location</label>
-          <select name="usedAtLocationId" value={form.usedAtLocationId} onChange={handleChange} className="border px-3 py-2 rounded">
-            <option value="">Select location (optional)</option>
-            {locations.map((l) => (
-              <option key={l._id} value={l._id}>{l.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col mb-3">
-          <label>Date</label>
-          <input type="date" name="date" value={form.date} onChange={handleChange} className="border px-3 py-2 rounded" />
-        </div>
-
-        <div className="flex flex-col mb-3">
-          <label>Remarks</label>
-          <textarea name="remarks" value={form.remarks} onChange={handleChange} className="border px-3 py-2 rounded" />
-        </div>
-
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+    <div className="min-h-screen bg-gray-100 p-8 flex justify-center">
+      <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-lg">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
           Consume Product
-        </button>
-      </form>
+        </h2>
+
+        {/* Add New Location */}
+        <div className="mb-6">
+          <label className="block text-gray-700 font-semibold mb-2">
+            Add New Location
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Enter new location"
+              value={newLocationName}
+              onChange={(e) => setNewLocationName(e.target.value)}
+              className="flex-1 p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              onClick={handleAddLocation}
+              className="bg-blue-500 text-white px-4 rounded-xl hover:bg-blue-600 transition"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        {/* Consume Form */}
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              Select Product
+            </label>
+            <select
+              value={selectedProduct}
+              onChange={(e) => setSelectedProduct(e.target.value)}
+              className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="">Select Product</option>
+              {products.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.productName} (In Stock: {p.instock})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              Select Location
+            </label>
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="">Select Location</option>
+              {locations.map((l) => (
+                <option key={l._id} value={l._id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              Quantity
+            </label>
+            <input
+              type="number"
+              placeholder="Enter quantity"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              Remarks
+            </label>
+            <input
+              type="text"
+              placeholder="Remarks"
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+            />
+          </div>
+
+          <button
+            onClick={handleConsume}
+            className="mt-4 bg-green-500 text-white font-semibold p-3 rounded-xl hover:bg-green-600 transition"
+          >
+            Consume Product
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
