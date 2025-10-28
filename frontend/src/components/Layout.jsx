@@ -1,6 +1,6 @@
 // src/components/Layout.jsx
 import React, { useState } from "react";
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   PlusSquare,
@@ -14,12 +14,14 @@ import {
   ChevronDown,
   ChevronRight,
   Search,
-  Bell
+  Bell,
+  User
 } from "lucide-react";
 
 export default function Layout() {
   const [issuesOpen, setIssuesOpen] = useState(false);
   const role = localStorage.getItem("role") || "staff";
+  const navigate = useNavigate();
 
   // Sidebar items
   const menuItems = [
@@ -27,19 +29,11 @@ export default function Layout() {
     { name: "Add Product", icon: <PlusSquare size={18} />, path: "/add_product" },
     { name: "Consume Product", icon: <PlusSquare size={18} />, path: "/consume_product" },
     { name: "Store", icon: <Package size={18} />, path: "/store" },
-    // Show Category only for admin
     ...(role === "admin" ? [{ name: "Category", icon: <FolderTree size={18} />, path: "/categorypage" }] : []),
+    ...(role === "admin" ? [{ name: "Add Staff", icon: <FolderTree size={18} />, path: "/add_staff" }] : []),
     { name: "Report", icon: <FileText size={18} />, path: "/reportpage" },
-    { name: "Consumptiopn History", icon: <ShoppingCart size={18} />, path: "/orders" },
-    {
-      name: "Issues",
-      icon: <AlertTriangle size={18} />,
-      subItems: [
-        { name: "Raise Issue", path: "/issues/raise" },
-        { name: "Track Issue", path: "/issues/track" },
-      ],
-    },
- 
+    { name: "Consumption History", icon: <ShoppingCart size={18} />, path: "/orders" },
+    
     { name: "LOGOUT", icon: <LogOut size={18} />, path: "/LogoutPage" },
   ];
 
@@ -104,11 +98,18 @@ export default function Layout() {
           <div className="flex items-center gap-6">
             <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium">{role}</span>
             <Bell className="text-gray-600 cursor-pointer" size={20} />
-            <img
-              src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff"
-              alt="Profile"
-              className="w-8 h-8 rounded-full cursor-pointer"
-            />
+            {/* 👇 Profile Icon Clickable */}
+            <div
+              onClick={() => navigate("/profile")}
+              className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-full transition"
+            >
+              <User className="text-blue-900" size={20} />
+              <img
+                src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff"
+                alt="Profile"
+                className="w-8 h-8 rounded-full"
+              />
+            </div>
           </div>
         </header>
 

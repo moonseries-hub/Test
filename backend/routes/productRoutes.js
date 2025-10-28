@@ -1,29 +1,26 @@
 import express from "express";
 import Product from "../models/Product.js";
+import Category from "../models/Category.js";
+import Location from "../models/Location.js";
 
 const router = express.Router();
 
-// GET all products with nested populate
+/* -------------------- GET ALL PRODUCTS -------------------- */
 router.get("/", async (req, res) => {
   try {
     const products = await Product.find()
       .populate("category", "name")
       .populate("location", "name")
-      .populate({
-        path: "consumptionRecords.usedAtLocation",
-        model: "Location",
-        select: "name",
-      })
       .sort({ createdAt: -1 });
 
     res.json(products);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching products:", err);
     res.status(500).json({ error: "Error fetching products" });
   }
 });
 
-// POST add new product
+/* -------------------- ADD PRODUCT -------------------- */
 router.post("/", async (req, res) => {
   try {
     const {
@@ -41,16 +38,25 @@ router.post("/", async (req, res) => {
       mirvDate,
     } = req.body;
 
+    const cat = await Category.findById(category);
+    const loc = await Location.findById(location);
+
+    if (!cat) return res.status(404).json({ error: "Category not found" });
+    if (!loc) return res.status(404).json({ error: "Location not found" });
+
     const product = await Product.create({
       productName,
       category,
+      categoryName: cat.name,
       location,
+      locationName: loc.name,
       make,
       model,
       serialNumber,
       quantity,
       instock: quantity,
       sold: 0,
+      minstock: cat.minStock,
       dateOfReceipt,
       cost,
       po,
@@ -61,53 +67,81 @@ router.post("/", async (req, res) => {
 
     res.status(201).json(product);
   } catch (err) {
-    console.error(err);
+    console.error("Error adding product:", err);
     res.status(500).json({ error: "Error adding product" });
   }
 });
 
-// PATCH consume product
-router.patch("/:id/consume", async (req, res) => {
-  const { quantity, usedAtLocationId, date, remarks } = req.body;
-
-  if (!quantity || quantity <= 0)
-    return res.status(400).json({ error: "Invalid quantity" });
-
+/* -------------------- UPDATE PRODUCT -------------------- */
+router.put("/:id", async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ error: "Product not found" });
-
-    if (quantity > product.instock)
-      return res.status(400).json({
-        error: `Not enough stock. Available: ${product.instock}`,
-      });
-
-    product.instock -= quantity;
-    product.sold = (product.sold || 0) + quantity;
-
-    product.consumptionRecords.push({
+    const {
+      productName,
+      category,
+      location,
+      make,
+      model,
+      serialNumber,
       quantity,
-      usedAtLocation: usedAtLocationId || null,
-      date: date || new Date(),
-      remarks: remarks || "",
-    });
+      instock,
+      sold,
+      minstock,
+      dateOfReceipt,
+      cost,
+      po,
+      productUpdatingDate,
+      mirvDate,
+    } = req.body;
 
-    await product.save();
-    res.json({ message: "Product consumed successfully", product });
+    const cat = await Category.findById(category);
+    const loc = await Location.findById(location);
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      {
+        productName,
+        category,
+        categoryName: cat ? cat.name : undefined,
+        location,
+        locationName: loc ? loc.name : undefined,
+        make,
+        model,
+        serialNumber,
+        quantity,
+        instock,
+        sold,
+        minstock,
+        dateOfReceipt,
+        cost,
+        po,
+        productUpdatingDate,
+        mirvDate,
+      },
+      { new: true }
+    );
+
+    if (!updatedProduct)
+      return res.status(404).json({ error: "Product not found" });
+
+    res.json(updatedProduct);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error("Error updating product:", err);
+    res.status(500).json({ error: "Error updating product" });
   }
 });
 
-// DELETE product
+/* -------------------- DELETE PRODUCT -------------------- */
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await Product.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Product not found" });
+    const product = await Product.findByIdAndDelete(req.params.id);
+
+    if (!product)
+      return res.status(404).json({ error: "Product not found" });
+
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Error deleting product:", err);
+    res.status(500).json({ error: "Error deleting product" });
   }
 });
 
