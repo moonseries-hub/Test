@@ -14,7 +14,6 @@ import Orders from "./pages/Orders";
 import LogoutPage from "./pages/LogoutPage";
 import AddStaff from "./pages/Add_Staff";
 import Profile from "./pages/Profile";
-
 export default function App() {
   const { user } = useUser();
 
@@ -48,16 +47,9 @@ export default function App() {
             <Route path="reportpage" element={<ReportPage />} />
             <Route path="orders" element={<Orders />} />
             <Route path="logoutpage" element={<LogoutPage />} />
-            <Route path="profile" element={<Profile />} />
+            <Route path="add_staff" element={<AddStaff />} />
+            <Route path="/profile" element={<Profile />} />
 
-            {/* Admin-only routes */}
-            {isAdmin && (
-              <>
-                <Route path="add_product" element={<AddProduct />} />
-                <Route path="add_staff" element={<AddStaff />} />
-                <Route path="categorypage" element={<CategoryPage />} />
-              </>
-            )}
 
             {/* Fallback to role-based dashboard */}
             <Route

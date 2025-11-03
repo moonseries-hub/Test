@@ -10,12 +10,14 @@ export default function ConsumeProduct() {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [locations, setLocations] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedProduct, setSelectedProduct] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("");
+  const [fromLocation, setFromLocation] = useState("");
+  const [toLocation, setToLocation] = useState("");
+
   const [quantity, setQuantity] = useState("");
+  const [quantityError, setQuantityError] = useState(""); // ✅ NEW
   const [remarks, setRemarks] = useState("");
   const [newLocationName, setNewLocationName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,7 +37,7 @@ export default function ConsumeProduct() {
       const res = await axios.get(API_CATEGORIES);
       setCategories(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching categories:", err);
     }
   };
 
@@ -45,7 +47,7 @@ export default function ConsumeProduct() {
       setProducts(res.data);
       setFilteredProducts(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching products:", err);
     }
   };
 
@@ -54,42 +56,19 @@ export default function ConsumeProduct() {
       const res = await axios.get(API_LOCATIONS);
       setLocations(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching locations:", err);
     }
   };
 
-  // Filter products by category + search term
-  useEffect(() => {
-    let filtered = products;
-    if (selectedCategory)
-      filtered = filtered.filter(
-        (p) => p.category && p.category._id === selectedCategory
-      );
-    if (searchTerm)
-      filtered = filtered.filter((p) =>
-        p.productName.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    setFilteredProducts(filtered);
-  }, [selectedCategory, searchTerm, products]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowProductDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Add new location
+  // ✅ Add New Location
   const handleAddLocation = async () => {
-    if (!newLocationName.trim()) return;
+    if (!newLocationName.trim()) {
+      alert("Please enter a location name.");
+      return;
+    }
     try {
       const res = await axios.post(API_LOCATIONS, { name: newLocationName });
       alert("✅ Location added successfully!");
-      setSelectedLocation(res.data._id);
       setNewLocationName("");
       fetchLocations();
     } catch (err) {
@@ -98,19 +77,53 @@ export default function ConsumeProduct() {
     }
   };
 
-  // Consume product
+  // ✅ Quantity Validation — live as user types
+  const handleQuantityChange = (e) => {
+    const val = e.target.value;
+
+    if (val === "") {
+      setQuantity("");
+      setQuantityError("");
+      return;
+    }
+
+    const num = Number(val);
+    setQuantity(val);
+
+    if (num <= 0) {
+      setQuantityError("❌ Quantity must be greater than 0");
+    } else {
+      setQuantityError("");
+    }
+  };
+
+  // ✅ Consume Product
   const handleConsume = async () => {
-    if (!selectedProduct || !selectedLocation || !quantity) {
+    if (
+      !selectedCategory ||
+      !selectedProduct ||
+      !fromLocation ||
+      !toLocation ||
+      !quantity
+    ) {
       alert("⚠️ Please fill all required fields.");
       return;
     }
 
+    if (quantityError) {
+      alert("⚠️ Fix quantity error before submitting.");
+      return;
+    }
+
     const product = products.find((p) => p._id === selectedProduct);
-    if (!product) return alert("Product not found.");
+    if (!product) {
+      alert("❌ Product not found.");
+      return;
+    }
 
     if (Number(quantity) > product.instock) {
       alert(
-        `❌ Quantity entered (${quantity}) exceeds available stock (${product.instock})`
+        `⚠️ Entered quantity (${quantity}) exceeds available stock (${product.instock}).`
       );
       return;
     }
@@ -118,12 +131,16 @@ export default function ConsumeProduct() {
     try {
       await axios.patch(`${API_PRODUCTS}/${selectedProduct}/consume`, {
         quantity: Number(quantity),
-        usedAtLocationId: selectedLocation,
+        fromLocationId: fromLocation,
+        toLocationId: toLocation,
         remarks,
       });
+
       alert("✅ Product consumed successfully!");
+      setSelectedCategory("");
       setSelectedProduct("");
-      setSelectedLocation("");
+      setFromLocation("");
+      setToLocation("");
       setQuantity("");
       setRemarks("");
       setSearchTerm("");
@@ -131,111 +148,25 @@ export default function ConsumeProduct() {
     } catch (err) {
       alert("❌ Failed to consume product");
       console.error(err);
+      alert("❌ Failed to consume product.");
     }
   };
 
-  // Validate quantity live
-  const handleQuantityChange = (e) => {
-    const value = e.target.value;
-    setQuantity(value);
-
-    const product = products.find((p) => p._id === selectedProduct);
-    if (product && Number(value) > product.instock) {
-      alert(
-        `⚠️ Entered quantity (${value}) exceeds available stock (${product.instock})`
-      );
-      setQuantity("");
-    }
-  };
+  // 🔍 Filter products by selected category
+  const filteredProducts = selectedCategory
+    ? products.filter((p) => p.category?._id === selectedCategory)
+    : products;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-gray-100 p-6 flex justify-center">
-      <div className="bg-white rounded-3xl shadow-xl w-full max-w-3xl p-8">
-        <h2 className="text-3xl font-bold text-center text-blue-700 mb-6">
-          📦 Consume Product
+    <div className="min-h-screen bg-gray-100 p-8 flex justify-center">
+      <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-xl">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
+          Consume Product
         </h2>
 
-        {/* CATEGORY SELECTION */}
-        <div className="mb-4">
-          <label className="font-semibold text-gray-700 mb-2 block">
-            Select Category
-          </label>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* SEARCHABLE PRODUCT DROPDOWN */}
-        <div className="mb-4 relative" ref={dropdownRef}>
-          <label className="font-semibold text-gray-700 mb-2 block">
-            Select Product
-          </label>
-          <input
-            type="text"
-            placeholder="Type to search..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setShowProductDropdown(true);
-            }}
-            onFocus={() => setShowProductDropdown(true)}
-            className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 mb-1"
-          />
-          {showProductDropdown && (
-            <div className="absolute z-10 w-full max-h-40 overflow-y-auto border rounded-xl shadow-lg bg-white">
-              {filteredProducts.map((p) => (
-                <div
-                  key={p._id}
-                  className={`p-2 cursor-pointer hover:bg-green-100 ${
-                    selectedProduct === p._id ? "bg-green-200" : ""
-                  }`}
-                  onClick={() => {
-                    setSelectedProduct(p._id);
-                    setSearchTerm(p.productName);
-                    setShowProductDropdown(false);
-                  }}
-                >
-                  {p.productName} — In Stock: {p.instock}
-                </div>
-              ))}
-              {filteredProducts.length === 0 && (
-                <div className="p-2 text-gray-500">No products found</div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* LOCATION SELECTION */}
-        <div className="mb-4">
-          <label className="font-semibold text-gray-700 mb-2 block">
-            Select Location
-          </label>
-          <select
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-            className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
-          >
-            <option value="">Select Location</option>
-            {locations.map((l) => (
-              <option key={l._id} value={l._id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* ADD NEW LOCATION */}
+        {/* Add New Location */}
         <div className="mb-6">
-          <label className="font-semibold text-gray-700 mb-2 block">
+          <label className="block text-gray-700 font-semibold mb-2">
             Add New Location
           </label>
           <div className="flex gap-2">
@@ -248,48 +179,138 @@ export default function ConsumeProduct() {
             />
             <button
               onClick={handleAddLocation}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition"
+              className="bg-blue-500 text-white px-4 rounded-xl hover:bg-blue-600 transition"
             >
-              ➕ Add
+              Add
             </button>
           </div>
         </div>
 
-        {/* QUANTITY */}
-        <div className="mb-4">
-          <label className="font-semibold text-gray-700 mb-2 block">
-            Quantity
-          </label>
-          <input
-            type="number"
-            placeholder="Enter quantity"
-            value={quantity}
-            onChange={handleQuantityChange}
-            className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
-          />
-        </div>
+        {/* Consume Form */}
+        <div className="flex flex-col gap-4">
+          {/* Category */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              Select Category
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setSelectedProduct("");
+              }}
+              className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="">Select Category</option>
+              {categories.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* REMARKS */}
-        <div className="mb-6">
-          <label className="font-semibold text-gray-700 mb-2 block">
-            Remarks
-          </label>
-          <input
-            type="text"
-            placeholder="Enter remarks (optional)"
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
-          />
-        </div>
+          {/* Product */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              Select Product
+            </label>
+            <select
+              value={selectedProduct}
+              onChange={(e) => setSelectedProduct(e.target.value)}
+              className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="">Select Product</option>
+              {filteredProducts.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.productName} (In Stock: {p.instock})
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* CONSUME BUTTON */}
-        <button
-          onClick={handleConsume}
-          className="w-full bg-green-500 text-white font-semibold text-lg py-3 rounded-xl hover:bg-green-600 transition"
-        >
-          ✅ Consume Product
-        </button>
+          {/* From Location */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              From Location
+            </label>
+            <select
+              value={fromLocation}
+              onChange={(e) => setFromLocation(e.target.value)}
+              className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="">Select From Location</option>
+              {locations.map((l) => (
+                <option key={l._id} value={l._id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* To Location */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              To Location
+            </label>
+            <select
+              value={toLocation}
+              onChange={(e) => setToLocation(e.target.value)}
+              className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="">Select To Location</option>
+              {locations.map((l) => (
+                <option key={l._id} value={l._id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Quantity */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              Quantity
+            </label>
+            <input
+              type="number"
+              placeholder="Enter quantity"
+              min="1"
+              value={quantity}
+              onChange={handleQuantityChange}
+              className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 ${
+                quantityError
+                  ? "border-red-500 focus:ring-red-400"
+                  : "focus:ring-green-400"
+              }`}
+            />
+            {quantityError && (
+              <p className="text-red-500 text-sm mt-1">{quantityError}</p>
+            )}
+          </div>
+
+          {/* Remarks */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-1">
+              Remarks
+            </label>
+            <input
+              type="text"
+              placeholder="Remarks"
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              className="w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+            />
+          </div>
+
+          {/* Submit */}
+          <button
+            onClick={handleConsume}
+            className="mt-4 bg-green-500 text-white font-semibold p-3 rounded-xl hover:bg-green-600 transition"
+          >
+            Consume Product
+          </button>
+        </div>
       </div>
     </div>
   );

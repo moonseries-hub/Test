@@ -139,30 +139,15 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Top Locations */}
-        <div className="bg-white p-4 rounded-2xl shadow">
-          <h3 className="font-semibold mb-2 text-center">📍 Top Locations</h3>
-          {topLocations.length === 0 ? (
-            <p className="text-gray-500 text-center">No location data yet.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={topLocations}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="qty" fill="#f59e0b" />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        
+        
       </div>
 
       {/* Bottom Section: Monthly Trend + Recent Consumption */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Consumption Trend */}
         <div className="bg-white p-4 rounded-2xl shadow">
-          <h3 className="font-semibold mb-2 text-center">Monthly Consumption Trend</h3>
+          <h3 className="font-semibold mb-2 text-center">PO in pipeline</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={monthlyTrend} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -208,27 +193,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-4 mt-8 justify-center">
-        <button
-          onClick={() => navigate("/add-product")}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          ➕ Add Product
-        </button>
-        <button
-          onClick={() => navigate("/consume-product")}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-        >
-          📦 Consume Product
-        </button>
-        <button
-          onClick={() => navigate("/orders")}
-          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-        >
-          📋 View Reports
-        </button>
-      </div>
+  
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Plus, Trash2, Layers, CheckCircle } from "lucide-react";
+import { Plus, Trash2, Layers, Edit3, Check, X } from "lucide-react";
+import { toast, Toaster } from "react-hot-toast";
 
 const API_URL = "http://localhost:5000/api/categories";
 
@@ -14,8 +15,9 @@ export default function CategoryPage() {
   });
   const [addingMake, setAddingMake] = useState({});
   const [addingModel, setAddingModel] = useState({});
-  const [minStockEdit, setMinStockEdit] = useState({}); // input state for each category
-  const [savingMinStock, setSavingMinStock] = useState(null); // show spinner/feedback
+  const [editingStock, setEditingStock] = useState(null);
+  const [tempStock, setTempStock] = useState("");
+  const [stockError, setStockError] = useState("");
 
   useEffect(() => {
     fetchCategories();
@@ -31,9 +33,7 @@ export default function CategoryPage() {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "minStock" && value < 0) return;
-    setNewCategory({ ...newCategory, [name]: value });
+    setNewCategory({ ...newCategory, [e.target.name]: e.target.value });
   };
 
   const addCategory = async () => {
@@ -42,22 +42,25 @@ export default function CategoryPage() {
       !newCategory.make.trim() ||
       !newCategory.model.trim()
     )
-      return alert("All fields are required");
+      return toast.error("All fields are required");
+
+    if (newCategory.minStock < 0 || isNaN(newCategory.minStock))
+      return toast.error("Min stock must be a non-negative number");
 
     try {
       const payload = {
         name: newCategory.name.trim(),
         makes: [newCategory.make.trim()],
         models: [newCategory.model.trim()],
-        minStock: Math.max(Number(newCategory.minStock) || 0, 0),
+        minStock: Number(newCategory.minStock) || 0,
       };
       const res = await axios.post(API_URL, payload);
       setCategories([res.data, ...categories]);
       setNewCategory({ name: "", make: "", model: "", minStock: "" });
-      alert("✅ Category added successfully!");
+      toast.success("✅ Category added successfully!");
     } catch (err) {
       console.error(err.response?.data || err.message);
-      alert("❌ Failed to add category");
+      toast.error("❌ Failed to add category");
     }
   };
 
@@ -66,91 +69,118 @@ export default function CategoryPage() {
     try {
       await axios.delete(`${API_URL}/${id}`);
       setCategories(categories.filter((c) => c._id !== id));
-      alert("🗑️ Category deleted");
+      toast.success("🗑️ Category deleted");
     } catch (err) {
       console.error(err.response?.data || err.message);
-      alert("❌ Failed to delete category");
+      toast.error("❌ Failed to delete category");
     }
   };
 
   const addMakeToCategory = async (catId) => {
     const make = addingMake[catId];
-    if (!make?.trim()) return alert("Enter make");
+    if (!make?.trim()) return toast.error("Enter make");
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/addMake`, {
+      const res = await axios.patch(`${API_URL}/${catId}/add-make`, {
         make: make.trim(),
       });
-      setCategories(categories.map((c) => (c._id === catId ? res.data : c)));
+      setCategories(
+        categories.map((c) =>
+          c._id === catId ? { ...c, makes: res.data.makes } : c
+        )
+      );
       setAddingMake({ ...addingMake, [catId]: "" });
-      alert("✅ Make added!");
+      toast.success("✅ Make added successfully!");
     } catch (err) {
       console.error(err.response?.data || err.message);
-      alert("❌ Failed to add make");
+      toast.error("❌ Failed to add make");
     }
   };
 
   const addModelToCategory = async (catId) => {
     const model = addingModel[catId];
-    if (!model?.trim()) return alert("Enter model");
+    if (!model?.trim()) return toast.error("Enter model");
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/addModel`, {
+      const res = await axios.patch(`${API_URL}/${catId}/add-model`, {
         model: model.trim(),
       });
-      setCategories(categories.map((c) => (c._id === catId ? res.data : c)));
+      setCategories(
+        categories.map((c) =>
+          c._id === catId ? { ...c, models: res.data.models } : c
+        )
+      );
       setAddingModel({ ...addingModel, [catId]: "" });
-      alert("✅ Model added!");
+      toast.success("✅ Model added successfully!");
     } catch (err) {
       console.error(err.response?.data || err.message);
-      alert("❌ Failed to add model");
+      toast.error("❌ Failed to add model");
     }
   };
 
   // ✅ Remove Make
   const removeMakeFromCategory = async (catId, make) => {
-    if (!window.confirm(`Remove make "${make}"?`)) return;
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/removeMake`, { make });
-      setCategories(categories.map((c) => (c._id === catId ? res.data : c)));
-      alert("🗑️ Make removed!");
+      const res = await axios.patch(`${API_URL}/${catId}/remove-make`, { make });
+      setCategories(
+        categories.map((c) =>
+          c._id === catId ? { ...c, makes: res.data.makes } : c
+        )
+      );
+      toast.success("🗑️ Make removed");
     } catch (err) {
       console.error(err.response?.data || err.message);
-      alert("❌ Failed to remove make");
+      toast.error("❌ Failed to remove make");
     }
   };
 
   // ✅ Remove Model
   const removeModelFromCategory = async (catId, model) => {
-    if (!window.confirm(`Remove model "${model}"?`)) return;
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/removeModel`, { model });
-      setCategories(categories.map((c) => (c._id === catId ? res.data : c)));
-      alert("🗑️ Model removed!");
+      const res = await axios.patch(`${API_URL}/${catId}/remove-model`, {
+        model,
+      });
+      setCategories(
+        categories.map((c) =>
+          c._id === catId ? { ...c, models: res.data.models } : c
+        )
+      );
+      toast.success("🗑️ Model removed");
     } catch (err) {
       console.error(err.response?.data || err.message);
-      alert("❌ Failed to remove model");
+      toast.error("❌ Failed to remove model");
     }
   };
 
-  // ✅ Update Min Stock (with button and Enter key)
-  const updateMinStock = async (catId) => {
-    const value = Math.max(Number(minStockEdit[catId]) || 0, 0);
-    setSavingMinStock(catId);
+  const handleStockInput = (value) => {
+    setTempStock(value);
+    if (value === "" || Number(value) < 0) {
+      setStockError("Stock cannot be negative or empty");
+    } else {
+      setStockError("");
+    }
+  };
+
+  const saveMinStock = async (catId) => {
+    if (tempStock === "" || Number(tempStock) < 0) {
+      setStockError("Stock cannot be negative or empty");
+      return;
+    }
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/minStock`, {
-        minStock: value,
+      const res = await axios.patch(`${API_URL}/${catId}/updateMinStock`, {
+        minStock: Number(tempStock),
       });
       setCategories(categories.map((c) => (c._id === catId ? res.data : c)));
-      setSavingMinStock(null);
-      alert("✅ Min stock updated successfully!");
+      setEditingStock(null);
+      setTempStock("");
+      toast.success("📦 Minimum stock updated");
     } catch (err) {
       console.error(err.response?.data || err.message);
-      setSavingMinStock(null);
-      alert("❌ Failed to update min stock");
+      toast.error("❌ Failed to update stock");
     }
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto">
+      <Toaster position="top-right" />
       <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
         <Layers className="w-7 h-7 text-orange-500" /> Category Management
       </h1>
@@ -165,7 +195,7 @@ export default function CategoryPage() {
             placeholder="Category name"
             value={newCategory.name}
             onChange={handleChange}
-            className="p-2 border rounded-lg w-full"
+            className="p-2 border rounded-lg w-full focus:ring-2 focus:ring-orange-400 outline-none"
           />
           <input
             type="text"
@@ -173,7 +203,7 @@ export default function CategoryPage() {
             placeholder="Make"
             value={newCategory.make}
             onChange={handleChange}
-            className="p-2 border rounded-lg w-full"
+            className="p-2 border rounded-lg w-full focus:ring-2 focus:ring-orange-400 outline-none"
           />
           <input
             type="text"
@@ -181,17 +211,16 @@ export default function CategoryPage() {
             placeholder="Model"
             value={newCategory.model}
             onChange={handleChange}
-            className="p-2 border rounded-lg w-full"
+            className="p-2 border rounded-lg w-full focus:ring-2 focus:ring-orange-400 outline-none"
           />
           <input
             type="number"
             name="minStock"
-            min="0"
             placeholder="Min Stock"
+            min="0"
             value={newCategory.minStock}
             onChange={handleChange}
-            onWheel={(e) => e.target.blur()}
-            className="p-2 border rounded-lg w-full"
+            className="p-2 border rounded-lg w-full focus:ring-2 focus:ring-orange-400 outline-none"
           />
         </div>
         <button
@@ -202,7 +231,7 @@ export default function CategoryPage() {
         </button>
       </div>
 
-      {/* Categories List */}
+      {/* Category List */}
       <div className="space-y-4">
         {categories.map((cat) => (
           <div
@@ -210,47 +239,56 @@ export default function CategoryPage() {
             className="bg-white rounded-2xl shadow-md p-4 border border-gray-100"
           >
             <div className="flex justify-between items-start">
-              <div className="flex-1 space-y-3">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  {cat.name}
-                </h3>
+              <div className="flex-1 space-y-2">
+                <h3 className="text-lg font-semibold text-gray-800">{cat.name}</h3>
 
-                {/* ✅ Min Stock with Update button */}
-                <div className="flex items-center gap-3">
-                  <label className="text-sm text-gray-600 font-medium">
-                    Min Stock:
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={
-                      minStockEdit[cat._id] !== undefined
-                        ? minStockEdit[cat._id]
-                        : cat.minStock
-                    }
-                    onChange={(e) =>
-                      setMinStockEdit({
-                        ...minStockEdit,
-                        [cat._id]: e.target.value,
-                      })
-                    }
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && updateMinStock(cat._id)
-                    }
-                    onWheel={(e) => e.target.blur()}
-                    className="border rounded px-2 py-1 w-24"
-                  />
-                  <button
-                    onClick={() => updateMinStock(cat._id)}
-                    className="bg-blue-500 text-white text-sm px-3 py-1 rounded hover:bg-blue-600"
-                    disabled={savingMinStock === cat._id}
-                  >
-                    {savingMinStock === cat._id ? "Saving..." : "Update"}
-                  </button>
-                  {savingMinStock === cat._id && (
-                    <CheckCircle className="text-green-500 w-5 h-5" />
+                <p className="text-sm text-gray-700 flex items-center gap-2">
+                  <strong>Min Stock:</strong>
+                  {editingStock === cat._id ? (
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={tempStock}
+                        onChange={(e) => handleStockInput(e.target.value)}
+                        className={`border rounded px-2 py-1 w-20 ${
+                          stockError ? "border-red-500" : ""
+                        }`}
+                      />
+                      {stockError && (
+                        <span className="text-red-500 text-xs">{stockError}</span>
+                      )}
+                      <button
+                        onClick={() => saveMinStock(cat._id)}
+                        className="text-green-600 hover:text-green-800"
+                      >
+                        <Check size={18} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingStock(null);
+                          setStockError("");
+                        }}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X size={18} />
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      {cat.minStock ?? 0}
+                      <button
+                        onClick={() => {
+                          setEditingStock(cat._id);
+                          setTempStock(cat.minStock ?? 0);
+                        }}
+                        className="text-blue-500 hover:text-blue-700"
+                      >
+                        <Edit3 size={16} />
+                      </button>
+                    </span>
                   )}
-                </div>
+                </p>
 
                 {/* Makes */}
                 <div className="flex flex-wrap gap-2">
@@ -264,22 +302,19 @@ export default function CategoryPage() {
                         onClick={() => removeMakeFromCategory(cat._id, m)}
                         className="text-red-500 hover:text-red-700 text-xs"
                       >
-                        <Trash2 size={12} />
+                        ×
                       </button>
                     </span>
                   ))}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-1">
                   <input
                     type="text"
                     placeholder="Add Make"
                     value={addingMake[cat._id] || ""}
                     onChange={(e) =>
-                      setAddingMake({
-                        ...addingMake,
-                        [cat._id]: e.target.value,
-                      })
+                      setAddingMake({ ...addingMake, [cat._id]: e.target.value })
                     }
                     className="border rounded px-2 py-1 flex-1"
                   />
@@ -303,22 +338,19 @@ export default function CategoryPage() {
                         onClick={() => removeModelFromCategory(cat._id, m)}
                         className="text-red-500 hover:text-red-700 text-xs"
                       >
-                        <Trash2 size={12} />
+                        ×
                       </button>
                     </span>
                   ))}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-1">
                   <input
                     type="text"
                     placeholder="Add Model"
                     value={addingModel[cat._id] || ""}
                     onChange={(e) =>
-                      setAddingModel({
-                        ...addingModel,
-                        [cat._id]: e.target.value,
-                      })
+                      setAddingModel({ ...addingModel, [cat._id]: e.target.value })
                     }
                     className="border rounded px-2 py-1 flex-1"
                   />

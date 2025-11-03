@@ -45,8 +45,15 @@ export default function Store() {
     }
   };
 
-  // ✅ Filtering logic
+  // Filtering logic with min stock
   const filteredProducts = products.filter((p) => {
+    if (filters.status) {
+      if (filters.status === "available" && p.instock <= (p.minstock || 0))
+        return false;
+      if (filters.status === "low" && (p.instock <= 0 || p.instock > (p.minstock || 0)))
+        return false;
+      if (filters.status === "out" && p.instock > 0) return false;
+    }
     if (filters.category && p.category?._id !== filters.category) return false;
     if (filters.make && p.make !== filters.make) return false;
     if (filters.model && p.model !== filters.model) return false;
@@ -85,23 +92,12 @@ export default function Store() {
     });
   };
 
-  // ✅ Determine row color based on stock vs minStock
-  const getStockStatusClass = (p) => {
-    const instock = p.instock || 0;
-    const min = p.minStock || 0;
-    if (instock === 0) return "bg-red-300 text-red-800 font-semibold";
-    if (instock < min) return "bg-orange-200 text-orange-800 font-semibold";
-    if (instock === min && min > 0) return "bg-yellow-200 text-yellow-800 font-semibold";
-    return "bg-green-200 text-green-800 font-semibold";
-  };
-
-  const getStatusLabel = (p) => {
-    const instock = p.instock || 0;
-    const min = p.minStock || 0;
-    if (instock === 0) return "Out of Stock";
-    if (instock < min) return "Below Minimum";
-    if (instock === min && min > 0) return "At Minimum";
-    return "Healthy";
+  // Status color logic
+  const getStatus = (p) => {
+    if (p.instock <= 0) return { label: "Out of Stock", color: "bg-red-200 text-red-800" };
+    if (p.instock <= (p.minstock || 0))
+      return { label: "Low Stock", color: "bg-yellow-200 text-yellow-800" };
+    return { label: "Available", color: "bg-green-200 text-green-800" };
   };
 
   return (
@@ -173,6 +169,8 @@ export default function Store() {
             className="border rounded px-3 py-2"
           >
             <option value="">All</option>
+            <option value="available">Available</option>
+            <option value="low">Low Stock</option>
             <option value="out">Out of Stock</option>
             <option value="below">Below Min</option>
             <option value="at">At Min</option>
@@ -198,28 +196,41 @@ export default function Store() {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map((p) => (
-              <tr key={p._id} className="text-center">
-                <td className="border px-2 py-1">{p.productName}</td>
-                <td className="border px-2 py-1">{p.category?.name || "-"}</td>
-                <td className="border px-2 py-1">{p.make}</td>
-                <td className="border px-2 py-1">{p.model || "-"}</td>
-                <td className="border px-2 py-1">{p.instock}</td>
-                <td className="border px-2 py-1">{p.minStock ?? 0}</td>
-                <td className="border px-2 py-1">{p.sold || 0}</td>
-                <td className={`border px-2 py-1 ${getStockStatusClass(p)}`}>
-                  {getStatusLabel(p)}
-                </td>
-                <td className="border px-2 py-1">
-                  <button
-                    onClick={() => handleDelete(p._id, p.productName)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 mx-auto"
+            {filteredProducts.map((p) => {
+              const status = getStatus(p);
+              return (
+                <tr key={p._id} className="text-center">
+                  <td className="border px-2 py-1">{p.productName}</td>
+                  <td className="border px-2 py-1">{p.category?.name || "-"}</td>
+                  <td className="border px-2 py-1">{p.make}</td>
+                  <td className="border px-2 py-1">{p.model || "-"}</td>
+                  <td
+                    className={`border px-2 py-1 font-bold ${
+                      p.instock <= 0
+                        ? "bg-red-200"
+                        : p.instock <= (p.minstock || 0)
+                        ? "bg-yellow-200"
+                        : "bg-green-200"
+                    }`}
                   >
-                    <Trash2 size={16} /> Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    {p.instock}
+                  </td>
+                  <td className="border px-2 py-1">{p.minstock || 0}</td>
+                  <td className="border px-2 py-1">{p.sold || 0}</td>
+                  <td className={`border px-2 py-1 font-bold ${status.color}`}>
+                    {status.label}
+                  </td>
+                  <td className="border px-2 py-1">
+                    <button
+                      onClick={() => handleDelete(p._id, p.productName)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 mx-auto"
+                    >
+                      <Trash2 size={16} /> Delete
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

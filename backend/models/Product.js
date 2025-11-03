@@ -10,15 +10,24 @@ const consumptionRecordSchema = new mongoose.Schema({
 const productSchema = new mongoose.Schema(
   {
     productName: { type: String, required: true },
-    category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
+
+    // Store both references and readable names
+    category: { type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,},
+    categoryName: { type: String },
     location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+    locationName: { type: String },
+
     make: String,
     model: String,
     serialNumber: String,
-    quantity: { type: Number, default: 0 },
-    instock: { type: Number, default: 0 },
-    sold: { type: Number, default: 0 },
-    minStock: { type: Number, default: 0 }, // ✅ Added minStock
+
+    quantity: { type: Number, default: 0, min: [0, "Quantity cannot be negative"] },
+    instock: { type: Number, default: 0, min: [0, "Stock cannot be negative"] },
+    sold: { type: Number, default: 0, min: [0, "Sold cannot be negative"] },
+    minstock: { type: Number, default: 0, min: [0, "Min stock cannot be negative"] },
+
     dateOfReceipt: Date,
     cost: Number,
     po: String,
