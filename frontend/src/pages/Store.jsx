@@ -1,7 +1,7 @@
 // src/pages/Store.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Trash2 } from "lucide-react"; // optional icon
+import { Trash2 } from "lucide-react";
 
 const API_PRODUCTS = "http://localhost:5000/api/products";
 const API_CATEGORIES = "http://localhost:5000/api/categories";
@@ -13,7 +13,7 @@ export default function Store() {
     category: "",
     make: "",
     model: "",
-    status: "",
+    stockStatus: "", // ✅ single unified filter
   });
 
   useEffect(() => {
@@ -45,16 +45,28 @@ export default function Store() {
     }
   };
 
-  // Filtering logic
+  // ✅ Filtering logic
   const filteredProducts = products.filter((p) => {
-    if (filters.status) {
-      if (filters.status === "available" && p.instock === 0) return false;
-      if (filters.status === "out" && p.instock > 0) return false;
-    }
     if (filters.category && p.category?._id !== filters.category) return false;
     if (filters.make && p.make !== filters.make) return false;
     if (filters.model && p.model !== filters.model) return false;
-    return true;
+
+    // unified stock filter
+    const instock = p.instock || 0;
+    const min = p.minStock || 0;
+
+    switch (filters.stockStatus) {
+      case "out":
+        return instock === 0;
+      case "below":
+        return instock > 0 && instock < min;
+      case "at":
+        return instock === min && min > 0;
+      case "healthy":
+        return instock > min;
+      default:
+        return true;
+    }
   });
 
   const selectedCategory = categories.find((c) => c._id === filters.category);
@@ -73,6 +85,25 @@ export default function Store() {
     });
   };
 
+  // ✅ Determine row color based on stock vs minStock
+  const getStockStatusClass = (p) => {
+    const instock = p.instock || 0;
+    const min = p.minStock || 0;
+    if (instock === 0) return "bg-red-300 text-red-800 font-semibold";
+    if (instock < min) return "bg-orange-200 text-orange-800 font-semibold";
+    if (instock === min && min > 0) return "bg-yellow-200 text-yellow-800 font-semibold";
+    return "bg-green-200 text-green-800 font-semibold";
+  };
+
+  const getStatusLabel = (p) => {
+    const instock = p.instock || 0;
+    const min = p.minStock || 0;
+    if (instock === 0) return "Out of Stock";
+    if (instock < min) return "Below Minimum";
+    if (instock === min && min > 0) return "At Minimum";
+    return "Healthy";
+  };
+
   return (
     <div className="p-4">
       <h2 className="font-bold text-lg mb-4">NRSC/ISRO Inventory Dashboard</h2>
@@ -89,7 +120,9 @@ export default function Store() {
           >
             <option value="">All</option>
             {categories.map((c) => (
-              <option key={c._id} value={c._id}>{c.name}</option>
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
             ))}
           </select>
         </div>
@@ -105,7 +138,9 @@ export default function Store() {
           >
             <option value="">All</option>
             {makeOptions.map((m) => (
-              <option key={m} value={m}>{m}</option>
+              <option key={m} value={m}>
+                {m}
+              </option>
             ))}
           </select>
         </div>
@@ -121,22 +156,27 @@ export default function Store() {
           >
             <option value="">All</option>
             {modelOptions.map((m) => (
-              <option key={m} value={m}>{m}</option>
+              <option key={m} value={m}>
+                {m}
+              </option>
             ))}
           </select>
         </div>
 
+        {/* ✅ Unified Stock Filter */}
         <div className="flex flex-col">
-          <label>Status</label>
+          <label>Stock Status</label>
           <select
-            name="status"
-            value={filters.status}
+            name="stockStatus"
+            value={filters.stockStatus}
             onChange={handleFilterChange}
             className="border rounded px-3 py-2"
           >
             <option value="">All</option>
-            <option value="available">Available</option>
             <option value="out">Out of Stock</option>
+            <option value="below">Below Min</option>
+            <option value="at">At Min</option>
+            <option value="healthy">Healthy</option>
           </select>
         </div>
       </div>
@@ -151,8 +191,9 @@ export default function Store() {
               <th className="border px-2 py-1">Make</th>
               <th className="border px-2 py-1">Model</th>
               <th className="border px-2 py-1">In-Stock</th>
+              <th className="border px-2 py-1">Min Stock</th>
               <th className="border px-2 py-1">Consumed</th>
-              <th className="border px-2 py-1">Status</th>
+              <th className="border px-2 py-1">Stock Status</th>
               <th className="border px-2 py-1">Action</th>
             </tr>
           </thead>
@@ -163,10 +204,11 @@ export default function Store() {
                 <td className="border px-2 py-1">{p.category?.name || "-"}</td>
                 <td className="border px-2 py-1">{p.make}</td>
                 <td className="border px-2 py-1">{p.model || "-"}</td>
-                <td className={`border px-2 py-1 font-bold ${p.instock === 0 ? "bg-red-200" : "bg-green-200"}`}>{p.instock}</td>
+                <td className="border px-2 py-1">{p.instock}</td>
+                <td className="border px-2 py-1">{p.minStock ?? 0}</td>
                 <td className="border px-2 py-1">{p.sold || 0}</td>
-                <td className={`border px-2 py-1 font-bold ${p.instock > 0 ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"}`}>
-                  {p.instock > 0 ? "Available" : "Out of Stock"}
+                <td className={`border px-2 py-1 ${getStockStatusClass(p)}`}>
+                  {getStatusLabel(p)}
                 </td>
                 <td className="border px-2 py-1">
                   <button
@@ -184,4 +226,3 @@ export default function Store() {
     </div>
   );
 }
-

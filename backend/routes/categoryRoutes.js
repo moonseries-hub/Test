@@ -17,14 +17,21 @@ router.get("/", async (req, res) => {
 // Add new category
 router.post("/", async (req, res) => {
   try {
-    const { name, makes, models } = req.body;
-    if (!name || !name.trim()) return res.status(400).json({ error: "Category name is required" });
+    const { name, makes, models, minStock } = req.body;
+    if (!name || !name.trim())
+      return res.status(400).json({ error: "Category name is required" });
 
-    const newCategory = new Category({ name: name.trim(), makes, models });
+    const newCategory = new Category({
+      name: name.trim(),
+      makes,
+      models,
+      minStock: minStock || 0,
+    });
     await newCategory.save();
     res.status(201).json(newCategory);
   } catch (err) {
-    if (err.code === 11000) return res.status(400).json({ error: "Category already exists" });
+    if (err.code === 11000)
+      return res.status(400).json({ error: "Category already exists" });
     res.status(500).json({ error: err.message });
   }
 });
@@ -32,7 +39,8 @@ router.post("/", async (req, res) => {
 // Delete category
 router.delete("/:id", async (req, res) => {
   const { id } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid category ID" });
+  if (!mongoose.Types.ObjectId.isValid(id))
+    return res.status(400).json({ error: "Invalid category ID" });
 
   try {
     const deleted = await Category.findByIdAndDelete(id);
@@ -43,7 +51,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// Add make/model to existing category
+// Add make/model
 router.patch("/:id/addMake", async (req, res) => {
   const { make } = req.body;
   const cat = await Category.findById(req.params.id);
@@ -62,7 +70,7 @@ router.patch("/:id/addModel", async (req, res) => {
   res.json(cat);
 });
 
-// Remove make/model from existing category
+// Remove make/model
 router.patch("/:id/removeMake", async (req, res) => {
   const { make } = req.body;
   const cat = await Category.findById(req.params.id);
@@ -79,6 +87,20 @@ router.patch("/:id/removeModel", async (req, res) => {
   cat.models = cat.models.filter((m) => m !== model);
   await cat.save();
   res.json(cat);
+});
+
+// ✅ Update minStock for category
+router.patch("/:id/minStock", async (req, res) => {
+  const { minStock } = req.body;
+  try {
+    const cat = await Category.findById(req.params.id);
+    if (!cat) return res.status(404).json({ error: "Category not found" });
+    cat.minStock = minStock;
+    await cat.save();
+    res.json(cat);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

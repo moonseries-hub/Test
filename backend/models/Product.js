@@ -15,9 +15,10 @@ const productSchema = new mongoose.Schema(
     make: String,
     model: String,
     serialNumber: String,
-    quantity: Number,
-    instock: Number,
-    sold: Number,
+    quantity: { type: Number, default: 0 },
+    instock: { type: Number, default: 0 },
+    sold: { type: Number, default: 0 },
+    minStock: { type: Number, default: 0 }, // ✅ Added minStock
     dateOfReceipt: Date,
     cost: Number,
     po: String,

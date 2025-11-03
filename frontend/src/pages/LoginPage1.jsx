@@ -1,32 +1,62 @@
+// frontend/pages/LoginPage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
+import axios from "axios";
+
+const API_STAFF_LOGIN = "http://localhost:5000/api/staff/login";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("admin");
   const navigate = useNavigate();
   const { setUser } = useUser();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    const users = [
-      { username: "admin", password: "a*d*m", role: "admin" },
-      { username: "staff", password: "s*s", role: "staff" },
-    ];
+    // 🔹 Identify role automatically
+    const role = username === "admin" ? "admin" : "staff";
 
-    const user = users.find(
-      (u) => u.username === username && u.password === password && u.role === role
-    );
+    // 🔸 Admin login (local)
+    if (role === "admin") {
+      if (password === "a*d*m") {
+        const token = "admin-token";
+        setUser({ username: "admin", role: "admin", token });
+        navigate("/");
+      } else {
+        alert("Invalid admin credentials");
+      }
+      return;
+    }
 
-    if (user) {
-      const token = "my-secret-token";
-      setUser({ username: user.username, role: user.role, token });
-      navigate("/");
-    } else {
-      alert("Invalid credentials");
+    // 🔹 Staff login through API
+    try {
+      const res = await axios.post(API_STAFF_LOGIN, { username, password });
+      const { token, staff, emailMissing } = res.data;
+
+      if (token && staff) {
+        setUser({
+          username: staff.username,
+          role: "staff",
+          token,
+          lastLogin: staff.lastLogin,
+          email: staff.email,
+        });
+
+        localStorage.setItem("staffToken", token);
+        alert("Login successful");
+
+        if (emailMissing) {
+          alert("⚠️ Please update your email in your profile to complete setup.");
+        }
+
+        navigate("/");
+      } else {
+        alert("Invalid login");
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Login failed");
     }
   };
 
@@ -47,7 +77,6 @@ export default function LoginPage() {
         <form className="flex flex-col gap-4" onSubmit={handleLogin}>
           <input
             type="text"
-            name="username"
             placeholder="Username"
             className="p-3 border rounded border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500"
             value={username}
@@ -57,23 +86,12 @@ export default function LoginPage() {
 
           <input
             type="password"
-            name="password"
             placeholder="Password"
             className="p-3 border rounded border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-
-          <select
-            name="role"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="p-3 border rounded border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500"
-          >
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-          </select>
 
           <button
             type="submit"

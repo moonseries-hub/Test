@@ -16,6 +16,10 @@ const categorySchema = new mongoose.Schema(
       type: [String], // array of strings
       default: [],
     },
+    minStock: {
+      type: Number,
+      default: 0, // new field
+    },
   },
   { timestamps: true }
 );
