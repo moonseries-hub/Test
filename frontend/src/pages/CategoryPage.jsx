@@ -130,6 +130,7 @@ export default function CategoryPage() {
     }
   };
 
+  // ✅ Remove Make
   const removeMakeFromCategory = async (catId, make) => {
     try {
       const res = await axios.patch(`${API_URL}/${catId}/remove-make`, { make });
@@ -144,6 +145,7 @@ export default function CategoryPage() {
     }
   };
 
+  // ✅ Remove Model
   const removeModelFromCategory = async (catId, model) => {
     try {
       const res = await axios.patch(`${API_URL}/${catId}/remove-model`, {
@@ -355,7 +357,7 @@ export default function CategoryPage() {
                 </div>
 
                 {/* Models */}
-                <div className="flex flex-wrap gap-2 mt-1">
+                <div className="flex flex-wrap gap-2 mt-2">
                   {cat.models.map((m) => (
                     <span
                       key={m}

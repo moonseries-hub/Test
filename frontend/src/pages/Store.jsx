@@ -13,7 +13,7 @@ export default function Store() {
     category: "",
     make: "",
     model: "",
-    status: "",
+    stockStatus: "", // ✅ single unified filter
   });
 
   useEffect(() => {
@@ -57,7 +57,23 @@ export default function Store() {
     if (filters.category && p.category?._id !== filters.category) return false;
     if (filters.make && p.make !== filters.make) return false;
     if (filters.model && p.model !== filters.model) return false;
-    return true;
+
+    // unified stock filter
+    const instock = p.instock || 0;
+    const min = p.minStock || 0;
+
+    switch (filters.stockStatus) {
+      case "out":
+        return instock === 0;
+      case "below":
+        return instock > 0 && instock < min;
+      case "at":
+        return instock === min && min > 0;
+      case "healthy":
+        return instock > min;
+      default:
+        return true;
+    }
   });
 
   const selectedCategory = categories.find((c) => c._id === filters.category);
@@ -143,11 +159,12 @@ export default function Store() {
           </select>
         </div>
 
+        {/* ✅ Unified Stock Filter */}
         <div className="flex flex-col">
-          <label>Status</label>
+          <label>Stock Status</label>
           <select
-            name="status"
-            value={filters.status}
+            name="stockStatus"
+            value={filters.stockStatus}
             onChange={handleFilterChange}
             className="border rounded px-3 py-2"
           >
@@ -155,6 +172,9 @@ export default function Store() {
             <option value="available">Available</option>
             <option value="low">Low Stock</option>
             <option value="out">Out of Stock</option>
+            <option value="below">Below Min</option>
+            <option value="at">At Min</option>
+            <option value="healthy">Healthy</option>
           </select>
         </div>
       </div>
@@ -171,7 +191,7 @@ export default function Store() {
               <th className="border px-2 py-1">In-Stock</th>
               <th className="border px-2 py-1">Min Stock</th>
               <th className="border px-2 py-1">Consumed</th>
-              <th className="border px-2 py-1">Status</th>
+              <th className="border px-2 py-1">Stock Status</th>
               <th className="border px-2 py-1">Action</th>
             </tr>
           </thead>

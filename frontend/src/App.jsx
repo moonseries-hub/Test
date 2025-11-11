@@ -17,39 +17,45 @@ import Profile from "./pages/Profile";
 export default function App() {
   const { user } = useUser();
 
+  const isLoggedIn = !!user?.token;
+  const isAdmin = user?.role === "admin";
+
   return (
     <Router>
-      {!user?.token ? (
+      {!isLoggedIn ? (
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       ) : (
         <Routes>
+          {/* Login should still be accessible for refresh safety */}
           <Route path="/login" element={<LoginPage />} />
 
+          {/* Layout applied to all authenticated routes */}
           <Route element={<Layout />}>
-            {/* Default dashboard depending on role */}
+            {/* Default home route based on role */}
             <Route
               index
-              element={user.role === "admin" ? <Dashboard /> : <DashboardStaff />}
+              element={isAdmin ? <Dashboard /> : <DashboardStaff />}
             />
 
-            {/* Pages */}
-            <Route path="add_product" element={<AddProduct />} />
+            {/* Routes for all users */}
             <Route path="store" element={<Store />} />
             <Route path="consume_product" element={<ConsumeProduct />} />
             <Route path="consume_product/:id" element={<ConsumeProduct />} />
             <Route path="reportpage" element={<ReportPage />} />
-            <Route path="categorypage" element={<CategoryPage />} />
             <Route path="orders" element={<Orders />} />
             <Route path="logoutpage" element={<LogoutPage />} />
             <Route path="add_staff" element={<AddStaff />} />
             <Route path="/profile" element={<Profile />} />
 
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Fallback to role-based dashboard */}
+            <Route
+              path="*"
+              element={<Navigate to={isAdmin ? "/" : "/"} replace />}
+            />
           </Route>
         </Routes>
       )}

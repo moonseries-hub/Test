@@ -185,4 +185,18 @@ router.patch("/:id/updateMinStock", async (req, res) => {
   }
 });
 
+// ✅ Update minStock for category
+router.patch("/:id/minStock", async (req, res) => {
+  const { minStock } = req.body;
+  try {
+    const cat = await Category.findById(req.params.id);
+    if (!cat) return res.status(404).json({ error: "Category not found" });
+    cat.minStock = minStock;
+    await cat.save();
+    res.json(cat);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

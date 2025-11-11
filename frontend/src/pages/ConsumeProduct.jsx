@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+// src/pages/ConsumeProduct.jsx
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 
 const API_PRODUCTS = "http://localhost:5000/api/products";
@@ -19,7 +20,12 @@ export default function ConsumeProduct() {
   const [quantityError, setQuantityError] = useState(""); // ✅ NEW
   const [remarks, setRemarks] = useState("");
   const [newLocationName, setNewLocationName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
 
+  const dropdownRef = useRef(null);
+
+  // Fetch all data
   useEffect(() => {
     fetchCategories();
     fetchProducts();
@@ -39,6 +45,7 @@ export default function ConsumeProduct() {
     try {
       const res = await axios.get(API_PRODUCTS);
       setProducts(res.data);
+      setFilteredProducts(res.data);
     } catch (err) {
       console.error("Error fetching products:", err);
     }
@@ -65,8 +72,8 @@ export default function ConsumeProduct() {
       setNewLocationName("");
       fetchLocations();
     } catch (err) {
+      alert("❌ Failed to add location");
       console.error(err);
-      alert("Failed to add location");
     }
   };
 
@@ -136,8 +143,10 @@ export default function ConsumeProduct() {
       setToLocation("");
       setQuantity("");
       setRemarks("");
+      setSearchTerm("");
       fetchProducts();
     } catch (err) {
+      alert("❌ Failed to consume product");
       console.error(err);
       alert("❌ Failed to consume product.");
     }

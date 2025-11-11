@@ -31,6 +31,7 @@ router.post("/", async (req, res) => {
       model,
       serialNumber,
       quantity,
+      minStock, // ✅ include minStock
       dateOfReceipt,
       cost,
       po,
@@ -53,8 +54,8 @@ router.post("/", async (req, res) => {
       make,
       model,
       serialNumber,
-      quantity,
-      instock: quantity,
+      quantity: initialQty,
+      instock: initialQty,
       sold: 0,
       minstock: cat.minStock,
       dateOfReceipt,
