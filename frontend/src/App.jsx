@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useUser } from "./context/UserContext";
-
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage1";
 import Dashboard from "./pages/Dashboard";
@@ -43,6 +42,8 @@ export default function App() {
             {/* Routes for all users */}
             <Route path="store" element={<Store />} />
             <Route path="consume_product" element={<ConsumeProduct />} />
+            <Route path="add_product" element={<AddProduct />} />
+            <Route path="categorypage" element={<CategoryPage />} />
             <Route path="consume_product/:id" element={<ConsumeProduct />} />
             <Route path="reportpage" element={<ReportPage />} />
             <Route path="orders" element={<Orders />} />
