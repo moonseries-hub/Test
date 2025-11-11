@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Plus, Trash2, Layers, Edit3, Check, X } from "lucide-react";
+import { Plus, Trash2, Layers, Edit3, Check, X, AlertCircle } from "lucide-react";
 import { toast, Toaster } from "react-hot-toast";
 
 const API_URL = "http://localhost:5000/api/categories";
@@ -13,6 +13,7 @@ export default function CategoryPage() {
     model: "",
     minStock: "",
   });
+  const [nameExists, setNameExists] = useState(false);
   const [addingMake, setAddingMake] = useState({});
   const [addingModel, setAddingModel] = useState({});
   const [editingStock, setEditingStock] = useState(null);
@@ -23,6 +24,7 @@ export default function CategoryPage() {
     fetchCategories();
   }, []);
 
+  // Fetch categories from DB
   const fetchCategories = async () => {
     try {
       const res = await axios.get(API_URL);
@@ -32,10 +34,20 @@ export default function CategoryPage() {
     }
   };
 
+  // Real-time name validation
   const handleChange = (e) => {
-    setNewCategory({ ...newCategory, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setNewCategory({ ...newCategory, [name]: value });
+
+    if (name === "name") {
+      const exists = categories.some(
+        (c) => c.name.toLowerCase() === value.trim().toLowerCase()
+      );
+      setNameExists(exists);
+    }
   };
 
+  // Add category
   const addCategory = async () => {
     if (
       !newCategory.name.trim() ||
@@ -47,6 +59,9 @@ export default function CategoryPage() {
     if (newCategory.minStock < 0 || isNaN(newCategory.minStock))
       return toast.error("Min stock must be a non-negative number");
 
+    if (nameExists)
+      return toast.error("This category already exists, try another name");
+
     try {
       const payload = {
         name: newCategory.name.trim(),
@@ -57,13 +72,14 @@ export default function CategoryPage() {
       const res = await axios.post(API_URL, payload);
       setCategories([res.data, ...categories]);
       setNewCategory({ name: "", make: "", model: "", minStock: "" });
+      setNameExists(false);
       toast.success("✅ Category added successfully!");
     } catch (err) {
-      console.error(err.response?.data || err.message);
-      toast.error("❌ Failed to add category");
+      toast.error(err.response?.data?.error || "❌ Failed to add category");
     }
   };
 
+  // Delete category
   const deleteCategory = async (id) => {
     if (!window.confirm("Delete this category?")) return;
     try {
@@ -71,11 +87,11 @@ export default function CategoryPage() {
       setCategories(categories.filter((c) => c._id !== id));
       toast.success("🗑️ Category deleted");
     } catch (err) {
-      console.error(err.response?.data || err.message);
       toast.error("❌ Failed to delete category");
     }
   };
 
+  // Make/Model CRUD
   const addMakeToCategory = async (catId) => {
     const make = addingMake[catId];
     if (!make?.trim()) return toast.error("Enter make");
@@ -90,8 +106,7 @@ export default function CategoryPage() {
       );
       setAddingMake({ ...addingMake, [catId]: "" });
       toast.success("✅ Make added successfully!");
-    } catch (err) {
-      console.error(err.response?.data || err.message);
+    } catch {
       toast.error("❌ Failed to add make");
     }
   };
@@ -110,8 +125,7 @@ export default function CategoryPage() {
       );
       setAddingModel({ ...addingModel, [catId]: "" });
       toast.success("✅ Model added successfully!");
-    } catch (err) {
-      console.error(err.response?.data || err.message);
+    } catch {
       toast.error("❌ Failed to add model");
     }
   };
@@ -125,8 +139,7 @@ export default function CategoryPage() {
         )
       );
       toast.success("🗑️ Make removed");
-    } catch (err) {
-      console.error(err.response?.data || err.message);
+    } catch {
       toast.error("❌ Failed to remove make");
     }
   };
@@ -142,12 +155,12 @@ export default function CategoryPage() {
         )
       );
       toast.success("🗑️ Model removed");
-    } catch (err) {
-      console.error(err.response?.data || err.message);
+    } catch {
       toast.error("❌ Failed to remove model");
     }
   };
 
+  // Min Stock Editing
   const handleStockInput = (value) => {
     setTempStock(value);
     if (value === "" || Number(value) < 0) {
@@ -166,12 +179,14 @@ export default function CategoryPage() {
       const res = await axios.patch(`${API_URL}/${catId}/updateMinStock`, {
         minStock: Number(tempStock),
       });
-      setCategories(categories.map((c) => (c._id === catId ? res.data : c)));
+      setCategories(
+        categories.map((c) =>
+          c._id === catId ? res.data.category : c
+        )
+      );
       setEditingStock(null);
-      setTempStock("");
       toast.success("📦 Minimum stock updated");
-    } catch (err) {
-      console.error(err.response?.data || err.message);
+    } catch {
       toast.error("❌ Failed to update stock");
     }
   };
@@ -187,14 +202,26 @@ export default function CategoryPage() {
       <div className="mb-6 bg-white p-6 rounded-2xl shadow-md space-y-4">
         <h2 className="text-lg font-semibold text-gray-700">Add New Category</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <input
-            type="text"
-            name="name"
-            placeholder="Category name"
-            value={newCategory.name}
-            onChange={handleChange}
-            className="p-2 border rounded-lg w-full focus:ring-2 focus:ring-orange-400 outline-none"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              name="name"
+              placeholder="Category name"
+              value={newCategory.name}
+              onChange={handleChange}
+              className={`p-2 border rounded-lg w-full focus:ring-2 outline-none ${
+                nameExists
+                  ? "border-red-500 focus:ring-red-400"
+                  : "focus:ring-orange-400"
+              }`}
+            />
+            {nameExists && (
+              <div className="absolute text-xs text-red-600 flex items-center gap-1 mt-1">
+                <AlertCircle size={12} /> Already exists
+              </div>
+            )}
+          </div>
+
           <input
             type="text"
             name="make"
@@ -234,12 +261,15 @@ export default function CategoryPage() {
         {categories.map((cat) => (
           <div
             key={cat._id}
-            className="bg-white rounded-2xl shadow-md p-4 border border-gray-100"
+            className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 transition hover:shadow-lg"
           >
             <div className="flex justify-between items-start">
               <div className="flex-1 space-y-2">
-                <h3 className="text-lg font-semibold text-gray-800">{cat.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {cat.name}
+                </h3>
 
+                {/* Min Stock */}
                 <p className="text-sm text-gray-700 flex items-center gap-2">
                   <strong>Min Stock:</strong>
                   {editingStock === cat._id ? (

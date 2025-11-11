@@ -4,162 +4,184 @@ import Product from "../models/Product.js";
 
 const router = express.Router();
 
-/* -------------------- GET ALL CATEGORIES -------------------- */
+/* ------------------------------- GET ALL ------------------------------- */
 router.get("/", async (req, res) => {
   try {
-    const categories = await Category.find();
+    const categories = await Category.find().sort({ createdAt: -1 });
     res.json(categories);
   } catch (err) {
-    console.error("Error fetching categories:", err);
-    res.status(500).json({ error: "Server error while fetching categories" });
+    console.error("❌ Error fetching categories:", err);
+    res.status(500).json({ message: "Server error fetching categories" });
   }
 });
 
-/* -------------------- CREATE CATEGORY -------------------- */
+/* ------------------------------- ADD NEW ------------------------------- */
 router.post("/", async (req, res) => {
   try {
-    const { name, makes = [], models = [], minStock = 0 } = req.body;
+    const { name, makes, models, minStock } = req.body;
 
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: "Category name is required" });
+    if (!name || !makes?.length || !models?.length) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     const existing = await Category.findOne({ name: name.trim() });
     if (existing) {
-      return res.status(400).json({ error: "Category already exists" });
+      return res.status(400).json({ message: "Category already exists" });
     }
 
-    const category = new Category({
+    const newCategory = new Category({
       name: name.trim(),
       makes,
       models,
-      minStock,
+      minStock: Number(minStock) || 0,
     });
 
-    const saved = await category.save();
+    const saved = await newCategory.save();
     res.status(201).json(saved);
   } catch (err) {
-    console.error("Error creating category:", err);
-    res.status(500).json({ error: "Server error while creating category" });
+    console.error("❌ Error adding category:", err);
+    res.status(500).json({ message: "Server error adding category" });
   }
 });
 
-/* -------------------- UPDATE MIN STOCK -------------------- */
-router.patch("/:id/updateMinStock", async (req, res) => {
+/* ----------------------------- DELETE CATEGORY ----------------------------- */
+router.delete("/:id", async (req, res) => {
   try {
-    const { minStock } = req.body;
-
-    const category = await Category.findByIdAndUpdate(
-      req.params.id,
-      { minStock },
-      { new: true }
-    );
-
+    const category = await Category.findByIdAndDelete(req.params.id);
     if (!category) {
-      return res.status(404).json({ error: "Category not found" });
+      return res.status(404).json({ message: "Category not found" });
     }
-
-    res.json(category);
+    res.json({ message: "Category deleted successfully" });
   } catch (err) {
-    console.error("Error updating min stock:", err);
-    res.status(500).json({ error: "Server error while updating min stock" });
+    console.error("❌ Error deleting category:", err);
+    res.status(500).json({ message: "Server error deleting category" });
   }
 });
 
-/* -------------------- ADD/REMOVE MAKES -------------------- */
+/* ----------------------------- ADD MAKE ----------------------------- */
 router.patch("/:id/add-make", async (req, res) => {
   try {
     const { make } = req.body;
-    if (!make || !make.trim()) return res.status(400).json({ error: "Make name is required" });
-
-    const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
-
-    const trimmedMake = make.trim();
-    if (!category.makes.includes(trimmedMake)) {
-      category.makes.push(trimmedMake);
-      await category.save();
+    if (!make?.trim()) {
+      return res.status(400).json({ message: "Make name is required" });
     }
 
-    res.json({ message: "Make added successfully", makes: category.makes });
+    const category = await Category.findById(req.params.id);
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    if (category.makes.includes(make.trim())) {
+      return res.status(400).json({ message: "Make already exists" });
+    }
+
+    category.makes.push(make.trim());
+    const updated = await category.save();
+    res.json(updated);
   } catch (err) {
-    console.error("Error adding make:", err);
-    res.status(500).json({ error: "Server error while adding make" });
+    console.error("❌ Error adding make:", err);
+    res.status(500).json({ message: "Server error adding make" });
   }
 });
 
+/* ----------------------------- REMOVE MAKE ----------------------------- */
 router.patch("/:id/remove-make", async (req, res) => {
   try {
     const { make } = req.body;
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
 
     category.makes = category.makes.filter((m) => m !== make);
-    await category.save();
-
-    res.json({ message: "Make removed successfully", makes: category.makes });
+    const updated = await category.save();
+    res.json(updated);
   } catch (err) {
-    console.error("Error removing make:", err);
-    res.status(500).json({ error: "Server error while removing make" });
+    console.error("❌ Error removing make:", err);
+    res.status(500).json({ message: "Server error removing make" });
   }
 });
 
-/* -------------------- ADD/REMOVE MODELS -------------------- */
+/* ----------------------------- ADD MODEL ----------------------------- */
 router.patch("/:id/add-model", async (req, res) => {
   try {
     const { model } = req.body;
-    if (!model || !model.trim()) return res.status(400).json({ error: "Model name is required" });
-
-    const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
-
-    const trimmedModel = model.trim();
-    if (!category.models.includes(trimmedModel)) {
-      category.models.push(trimmedModel);
-      await category.save();
+    if (!model?.trim()) {
+      return res.status(400).json({ message: "Model name is required" });
     }
 
-    res.json({ message: "Model added successfully", models: category.models });
+    const category = await Category.findById(req.params.id);
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    if (category.models.includes(model.trim())) {
+      return res.status(400).json({ message: "Model already exists" });
+    }
+
+    category.models.push(model.trim());
+    const updated = await category.save();
+    res.json(updated);
   } catch (err) {
-    console.error("Error adding model:", err);
-    res.status(500).json({ error: "Server error while adding model" });
+    console.error("❌ Error adding model:", err);
+    res.status(500).json({ message: "Server error adding model" });
   }
 });
 
+/* ----------------------------- REMOVE MODEL ----------------------------- */
 router.patch("/:id/remove-model", async (req, res) => {
   try {
     const { model } = req.body;
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
 
     category.models = category.models.filter((m) => m !== model);
-    await category.save();
-
-    res.json({ message: "Model removed successfully", models: category.models });
+    const updated = await category.save();
+    res.json(updated);
   } catch (err) {
-    console.error("Error removing model:", err);
-    res.status(500).json({ error: "Server error while removing model" });
+    console.error("❌ Error removing model:", err);
+    res.status(500).json({ message: "Server error removing model" });
   }
 });
 
-/* -------------------- DELETE CATEGORY + PRODUCTS -------------------- */
-router.delete("/:id", async (req, res) => {
+/* ----------------------------- UPDATE MIN STOCK ----------------------------- */
+router.patch("/:id/updateMinStock", async (req, res) => {
   try {
-    const { id } = req.params;
+    const { minStock } = req.body;
+    const categoryId = req.params.id;
 
-    const category = await Category.findById(id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
+    if (minStock < 0 || isNaN(minStock)) {
+      return res.status(400).json({ message: "Invalid minStock value" });
+    }
 
-    const deletedProducts = await Product.deleteMany({ category: id });
-    await Category.findByIdAndDelete(id);
+    // ✅ Update the category first
+    const updatedCategory = await Category.findByIdAndUpdate(
+      categoryId,
+      { minStock },
+      { new: true }
+    );
 
-    res.json({
-      message: "Category and its products deleted successfully",
-      deletedProducts: deletedProducts.deletedCount,
-    });
+    if (!updatedCategory) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    // ✅ Ensure ALL products under this category get updated — even old ones
+    const updateResult = await Product.updateMany(
+      { "category._id": categoryId },
+      { $set: { minstock: Number(minStock) } },
+      { multi: true }
+    );
+
+    console.log(
+      `✅ Updated ${updateResult.modifiedCount} products' minstock for category ${updatedCategory.name}`
+    );
+
+    res.json(updatedCategory);
   } catch (err) {
-    console.error("Error deleting category and products:", err);
-    res.status(500).json({ error: "Server error while deleting category" });
+    console.error("❌ Error updating minStock:", err);
+    res.status(500).json({ message: "Server error updating minStock" });
   }
 });
 
