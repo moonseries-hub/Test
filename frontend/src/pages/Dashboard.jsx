@@ -4,13 +4,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
 } from "recharts";
-import { useNavigate } from "react-router-dom";
 
 const API_PRODUCTS = "http://localhost:5000/api/products";
 
 export default function Dashboard() {
   const [products, setProducts] = useState([]);
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
@@ -76,19 +74,6 @@ export default function Dashboard() {
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 5);
 
-  // === Top Locations ===
-  const locationMap = {};
-  products.forEach((p) =>
-    (p.consumptionRecords || []).forEach((r) => {
-      const loc = r.usedAtLocation?.name || "Unknown";
-      locationMap[loc] = (locationMap[loc] || 0) + r.quantity;
-    })
-  );
-  const topLocations = Object.entries(locationMap)
-    .map(([name, qty]) => ({ name, qty }))
-    .sort((a, b) => b.qty - a.qty)
-    .slice(0, 5);
-
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold mb-6 text-blue-700">📊 Inventory Dashboard</h1>
@@ -138,16 +123,13 @@ export default function Dashboard() {
             </PieChart>
           </ResponsiveContainer>
         </div>
-
-        
-        
       </div>
 
       {/* Bottom Section: Monthly Trend + Recent Consumption */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Consumption Trend */}
         <div className="bg-white p-4 rounded-2xl shadow">
-          <h3 className="font-semibold mb-2 text-center">PO in pipeline</h3>
+          <h3 className="font-semibold mb-2 text-center">📈 Monthly Consumption Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={monthlyTrend} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -192,8 +174,6 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
-
-  
     </div>
   );
 }
