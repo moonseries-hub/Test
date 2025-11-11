@@ -31,7 +31,7 @@ router.post("/", async (req, res) => {
       model,
       serialNumber,
       quantity,
-      minStock, // ✅ include minStock
+      minstock,
       dateOfReceipt,
       cost,
       po,
@@ -45,6 +45,8 @@ router.post("/", async (req, res) => {
     if (!cat) return res.status(404).json({ error: "Category not found" });
     if (!loc) return res.status(404).json({ error: "Location not found" });
 
+    const initialQty = Number(quantity) || 0;
+
     const product = await Product.create({
       productName,
       category,
@@ -57,7 +59,7 @@ router.post("/", async (req, res) => {
       quantity: initialQty,
       instock: initialQty,
       sold: 0,
-      minstock: cat.minStock,
+      minstock: Number(minstock) || 0,
       dateOfReceipt,
       cost,
       po,
@@ -76,53 +78,11 @@ router.post("/", async (req, res) => {
 /* -------------------- UPDATE PRODUCT -------------------- */
 router.put("/:id", async (req, res) => {
   try {
-    const {
-      productName,
-      category,
-      location,
-      make,
-      model,
-      serialNumber,
-      quantity,
-      instock,
-      sold,
-      minstock,
-      dateOfReceipt,
-      cost,
-      po,
-      productUpdatingDate,
-      mirvDate,
-    } = req.body;
+    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
 
-    const cat = await Category.findById(category);
-    const loc = await Location.findById(location);
-
-    const updatedProduct = await Product.findByIdAndUpdate(
-      req.params.id,
-      {
-        productName,
-        category,
-        categoryName: cat ? cat.name : undefined,
-        location,
-        locationName: loc ? loc.name : undefined,
-        make,
-        model,
-        serialNumber,
-        quantity,
-        instock,
-        sold,
-        minstock,
-        dateOfReceipt,
-        cost,
-        po,
-        productUpdatingDate,
-        mirvDate,
-      },
-      { new: true }
-    );
-
-    if (!updatedProduct)
-      return res.status(404).json({ error: "Product not found" });
+    if (!updatedProduct) return res.status(404).json({ error: "Product not found" });
 
     res.json(updatedProduct);
   } catch (err) {
@@ -136,13 +96,45 @@ router.delete("/:id", async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
 
-    if (!product)
-      return res.status(404).json({ error: "Product not found" });
+    if (!product) return res.status(404).json({ error: "Product not found" });
 
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
     console.error("Error deleting product:", err);
     res.status(500).json({ error: "Error deleting product" });
+  }
+});
+
+/* -------------------- CONSUME PRODUCT -------------------- */
+router.patch("/:id/consume", async (req, res) => {
+  try {
+    const { quantity, fromLocationId, toLocationId, remarks } = req.body;
+
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ error: "Product not found" });
+
+    if (quantity > product.instock) {
+      return res
+        .status(400)
+        .json({ error: `Quantity exceeds available stock (${product.instock})` });
+    }
+
+    product.instock -= Number(quantity);
+
+    product.consumptionRecords.push({
+      quantity,
+      fromLocation: fromLocationId,
+      toLocation: toLocationId,
+      remarks,
+      date: new Date(),
+    });
+
+    await product.save();
+
+    res.json({ message: "Product consumed successfully", product });
+  } catch (err) {
+    console.error("Error consuming product:", err);
+    res.status(500).json({ error: "Error consuming product" });
   }
 });
 

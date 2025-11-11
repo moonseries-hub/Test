@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Plus, Trash2, Layers, Edit3, Check, X, AlertCircle } from "lucide-react";
@@ -83,9 +84,9 @@ export default function CategoryPage() {
   const deleteCategory = async (id) => {
     if (!window.confirm("Delete this category?")) return;
     try {
-      await axios.delete(`${API_URL}/${id}`);
+      await axios.delete(`${API_URL}`/`${id}`);
       setCategories(categories.filter((c) => c._id !== id));
-      toast.success("🗑️ Category deleted");
+      toast.success("🗑 Category deleted");
     } catch (err) {
       toast.error("❌ Failed to delete category");
     }
@@ -96,7 +97,7 @@ export default function CategoryPage() {
     const make = addingMake[catId];
     if (!make?.trim()) return toast.error("Enter make");
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/add-make`, {
+      const res = await axios.patch(`${API_URL}`/`${catId}/add-make`, {
         make: make.trim(),
       });
       setCategories(
@@ -115,7 +116,7 @@ export default function CategoryPage() {
     const model = addingModel[catId];
     if (!model?.trim()) return toast.error("Enter model");
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/add-model`, {
+      const res = await axios.patch(`${API_URL}`/`${catId}/add-model`, {
         model: model.trim(),
       });
       setCategories(
@@ -130,25 +131,23 @@ export default function CategoryPage() {
     }
   };
 
-  // ✅ Remove Make
   const removeMakeFromCategory = async (catId, make) => {
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/remove-make`, { make });
+      const res = await axios.patch(`${API_URL}`/`${catId}/remove-make`, { make });
       setCategories(
         categories.map((c) =>
           c._id === catId ? { ...c, makes: res.data.makes } : c
         )
       );
-      toast.success("🗑️ Make removed");
+      toast.success("🗑 Make removed");
     } catch {
       toast.error("❌ Failed to remove make");
     }
   };
 
-  // ✅ Remove Model
   const removeModelFromCategory = async (catId, model) => {
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/remove-model`, {
+      const res = await axios.patch(`${API_URL}`/`${catId}/remove-model`, {
         model,
       });
       setCategories(
@@ -156,7 +155,7 @@ export default function CategoryPage() {
           c._id === catId ? { ...c, models: res.data.models } : c
         )
       );
-      toast.success("🗑️ Model removed");
+      toast.success("🗑 Model removed");
     } catch {
       toast.error("❌ Failed to remove model");
     }
@@ -178,7 +177,7 @@ export default function CategoryPage() {
       return;
     }
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/updateMinStock`, {
+      const res = await axios.patch(`${API_URL}`/`${catId}/updateMinStock`, {
         minStock: Number(tempStock),
       });
       setCategories(
@@ -357,7 +356,7 @@ export default function CategoryPage() {
                 </div>
 
                 {/* Models */}
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-1">
                   {cat.models.map((m) => (
                     <span
                       key={m}
@@ -403,6 +402,6 @@ export default function CategoryPage() {
           </div>
         ))}
       </div>
-    </div>
-  );
+ </div>
+);
 }

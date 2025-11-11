@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 
 const consumptionRecordSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
-  usedAtLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+  fromLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+  toLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
   date: { type: Date, default: Date.now },
   remarks: { type: String, default: "" },
 });
