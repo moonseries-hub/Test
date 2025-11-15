@@ -8,7 +8,12 @@ const API_CATEGORIES = "http://localhost:5000/api/categories";
 export default function Store() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [filters, setFilters] = useState({ category: "", make: "", model: "", status: "" });
+  const [filters, setFilters] = useState({
+    category: "",
+    make: "",
+    model: "",
+    stockStatus: "", // ✅ single unified filter
+  });
 
   useEffect(() => { fetchData(); }, []);
 
@@ -35,7 +40,23 @@ export default function Store() {
     if (filters.category && p.category?._id !== filters.category) return false;
     if (filters.make && p.make !== filters.make) return false;
     if (filters.model && p.model !== filters.model) return false;
-    return true;
+
+    // unified stock filter
+    const instock = p.instock || 0;
+    const min = p.minStock || 0;
+
+    switch (filters.stockStatus) {
+      case "out":
+        return instock === 0;
+      case "below":
+        return instock > 0 && instock < min;
+      case "at":
+        return instock === min && min > 0;
+      case "healthy":
+        return instock > min;
+      default:
+        return true;
+    }
   });
 
   const selectedCategory = categories.find(c => c._id === filters.category);
@@ -57,24 +78,77 @@ export default function Store() {
     <div className="p-4">
       <h2 className="font-bold text-lg mb-4">Inventory Dashboard</h2>
       <div className="bg-white p-4 rounded-lg shadow mb-4 flex flex-wrap gap-4">
-        <select name="category" value={filters.category} onChange={handleFilterChange}>
-          <option value="">All Categories</option>
-          {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-        </select>
-        <select name="make" value={filters.make} onChange={handleFilterChange} disabled={!filters.category}>
-          <option value="">All Makes</option>
-          {makeOptions.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <select name="model" value={filters.model} onChange={handleFilterChange} disabled={!filters.category}>
-          <option value="">All Models</option>
-          {modelOptions.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <select name="status" value={filters.status} onChange={handleFilterChange}>
-          <option value="">All Status</option>
-          <option value="available">Available</option>
-          <option value="low">Low Stock</option>
-          <option value="out">Out of Stock</option>
-        </select>
+        <div className="flex flex-col">
+          <label>Category</label>
+          <select
+            name="category"
+            value={filters.category}
+            onChange={handleFilterChange}
+            className="border rounded px-3 py-2"
+          >
+            <option value="">All</option>
+            {categories.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <label>Make</label>
+          <select
+            name="make"
+            value={filters.make}
+            onChange={handleFilterChange}
+            className="border rounded px-3 py-2"
+            disabled={!filters.category}
+          >
+            <option value="">All</option>
+            {makeOptions.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <label>Model</label>
+          <select
+            name="model"
+            value={filters.model}
+            onChange={handleFilterChange}
+            className="border rounded px-3 py-2"
+            disabled={!filters.category}
+          >
+            <option value="">All</option>
+            {modelOptions.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* ✅ Unified Stock Filter */}
+        <div className="flex flex-col">
+          <label>Stock Status</label>
+          <select
+            name="stockStatus"
+            value={filters.stockStatus}
+            onChange={handleFilterChange}
+            className="border rounded px-3 py-2"
+          >
+            <option value="">All</option>
+            <option value="available">Available</option>
+            <option value="low">Low Stock</option>
+            <option value="out">Out of Stock</option>
+            <option value="below">Below Min</option>
+            <option value="at">At Min</option>
+            <option value="healthy">Healthy</option>
+          </select>
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow overflow-x-auto max-h-[80vh]">
@@ -88,7 +162,7 @@ export default function Store() {
               <th className="border px-2 py-1">In-Stock</th>
               <th className="border px-2 py-1">Min Stock</th>
               <th className="border px-2 py-1">Consumed</th>
-              <th className="border px-2 py-1">Status</th>
+              <th className="border px-2 py-1">Stock Status</th>
               <th className="border px-2 py-1">Action</th>
             </tr>
           </thead>

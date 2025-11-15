@@ -4,9 +4,6 @@ const consumptionSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   fromLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
   toLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-  usedAtLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-  
-  remarks: { type: String, default: "" },
   date: { type: Date, default: Date.now },
 });
 

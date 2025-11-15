@@ -1,39 +1,58 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { Eye, EyeOff, Edit3, Save, X } from "lucide-react";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
-
-  // Edit states for each field
-  const [editUsername, setEditUsername] = useState(false);
-  const [editEmail, setEditEmail] = useState(false);
-  const [editPassword, setEditPassword] = useState(false);
-
-  const [usernameInput, setUsernameInput] = useState("");
-  const [emailInput, setEmailInput] = useState("");
-  const [passwordInput, setPasswordInput] = useState("");
-
-  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState(""); // existing password
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [loadingField, setLoadingField] = useState("");
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Load profile data on mount
   useEffect(() => {
     const stored = localStorage.getItem("user");
     const role = localStorage.getItem("role");
 
     if (role === "admin") {
-      const adminData = JSON.parse(localStorage.getItem("adminProfile")) || {};
-      setUser({ username: "admin", role: "admin", ...adminData });
+      const storedAdmin = JSON.parse(localStorage.getItem("adminProfile"));
+      if (storedAdmin) {
+        setUser({ username: storedAdmin.username, role: "admin" });
+        setUsername(storedAdmin.username);
+        setPassword(storedAdmin.password);
+      } else {
+        const defaultAdmin = { username: "admin", password: "admin123" };
+        localStorage.setItem("adminProfile", JSON.stringify(defaultAdmin));
+        setUser({ username: "admin", role: "admin" });
+        setUsername("admin");
+        setPassword("admin123");
+      }
     } else if (stored) {
       const data = JSON.parse(stored);
       setUser(data);
+      setUsername(data.username);
+
+      // Fetch latest staff password from backend
+      axios
+        .get(`http://localhost:5000/api/staff/${data._id}`)
+        .then((res) => setPassword(res.data.password || ""))
+        .catch((err) => console.error("Error fetching user:", err));
     }
   }, []);
 
   const updateField = async (field) => {
     setMessage("");
-    setLoadingField(field);
+
+    if (newPassword && newPassword === password) {
+      setMessage("❌ New password cannot be the same as the old password!");
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const updatedData = {};
@@ -42,22 +61,27 @@ export default function Profile() {
       if (field === "password") updatedData.password = passwordInput || user.password;
 
       if (user.role === "admin") {
-        localStorage.setItem("adminProfile", JSON.stringify({ ...user, ...updatedData }));
-        setUser((prev) => ({ ...prev, ...updatedData }));
+        const updatedAdmin = { username, password: newPassword || password };
+        localStorage.setItem("adminProfile", JSON.stringify(updatedAdmin));
+        setPassword(newPassword || password);
+        setNewPassword("");
+        setMessage("✅ Admin profile updated successfully!");
       } else {
-        await axios.put(`http://localhost:5000/api/staff/${user._id}`, updatedData);
-        setUser((prev) => ({ ...prev, ...updatedData }));
-        localStorage.setItem("user", JSON.stringify({ ...user, ...updatedData }));
+        await axios.put(`http://localhost:5000/api/staff/${user._id}`, {
+          username,
+          password: newPassword || password,
+        });
+        const updated = { ...user, username };
+        localStorage.setItem("user", JSON.stringify(updated));
+        setUser(updated);
+        setPassword(newPassword || password);
+        setNewPassword("");
+        setMessage("✅ Profile updated successfully!");
       }
-
-      setMessage(`${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully!`);
-      // Reset inputs and edit state
-      if (field === "username") { setEditUsername(false); setUsernameInput(""); }
-      if (field === "email") { setEditEmail(false); setEmailInput(""); }
-      if (field === "password") { setEditPassword(false); setPasswordInput(""); setShowNewPassword(false); }
+      setIsEditingPassword(false);
     } catch (err) {
-      console.error(err);
-      setMessage(`Error updating ${field}!`);
+      console.error("Profile update error:", err);
+      setMessage("⚠ Error updating profile!");
     } finally {
       setLoadingField("");
     }
@@ -73,103 +97,117 @@ export default function Profile() {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
 
   return (
-    <div className="max-w-md mx-auto mt-12 bg-white shadow-xl rounded-2xl p-6 space-y-6">
-      <h2 className="text-2xl font-bold text-blue-700">Profile</h2>
+    <div className="max-w-lg mx-auto mt-12 bg-white shadow-2xl rounded-2xl p-8 border border-gray-200 transition-transform hover:scale-[1.01]">
+      <h2 className="text-3xl font-bold mb-6 text-center text-blue-700">
+        Profile Settings
+      </h2>
 
-      {/* Username */}
-      <div className="space-y-1">
-        <p className="text-gray-600">Username</p>
-        {!editUsername ? (
-          <div className="flex justify-between items-center bg-gray-100 p-2 rounded">
-            <span>{user.username}</span>
-            <button onClick={() => setEditUsername(true)} className="text-blue-600 hover:underline">Edit</button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={usernameInput}
-              onChange={(e) => setUsernameInput(e.target.value)}
-              className="border p-2 rounded flex-1"
-              placeholder="New username"
-            />
-            <button onClick={() => updateField("username")} disabled={loadingField==="username"} className="bg-blue-600 text-white px-3 rounded hover:bg-blue-700">
-              {loadingField==="username" ? "Saving..." : "Save"}
-            </button>
-            <button onClick={() => cancelEdit("username")} className="bg-gray-200 px-3 rounded hover:bg-gray-300">Cancel</button>
-          </div>
-        )}
-      </div>
-
-      {/* Email */}
-      <div className="space-y-1">
-        <p className="text-gray-600">Email</p>
-        {!editEmail ? (
-          <div className="flex justify-between items-center bg-gray-100 p-2 rounded">
-            <span>{user.email || "-"}</span>
-            <button onClick={() => setEditEmail(true)} className="text-blue-600 hover:underline">Edit</button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              className="border p-2 rounded flex-1"
-              placeholder="New email"
-            />
-            <button onClick={() => updateField("email")} disabled={loadingField==="email"} className="bg-blue-600 text-white px-3 rounded hover:bg-blue-700">
-              {loadingField==="email" ? "Saving..." : "Save"}
-            </button>
-            <button onClick={() => cancelEdit("email")} className="bg-gray-200 px-3 rounded hover:bg-gray-300">Cancel</button>
-          </div>
-        )}
-      </div>
-
-      {/* Password */}
-      <div className="space-y-1">
-        <p className="text-gray-600 mb-1">Password</p>
-        <div className="relative">
-          <input
-            type={showOldPassword ? "text" : "password"}
-            value={user.password || ""}
-            readOnly
-            className="p-2 w-full bg-gray-100 border rounded pr-16 cursor-not-allowed"
-          />
-          <button
-            type="button"
-            onClick={() => setShowOldPassword(!showOldPassword)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-700"
-          >
-            {showOldPassword ? "Hide" : "Show"}
-          </button>
+      <form onSubmit={handleUpdate} className="flex flex-col gap-6">
+        {/* Role */}
+        <div>
+          <label className="block text-gray-600 mb-1">Role</label>
+          <p className="font-semibold text-gray-800 capitalize">
+            {user.role === "admin" ? "Administrator" : "Staff Member"}
+          </p>
         </div>
 
-        {editPassword && (
-          <div className="flex gap-2 mt-2">
-            <input
-              type={showNewPassword ? "text" : "password"}
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              className="border p-2 rounded flex-1"
-              placeholder="New password"
-            />
-            <button onClick={() => setShowNewPassword(!showNewPassword)} className="px-3 bg-gray-200 rounded hover:bg-gray-300">
-              {showNewPassword ? "Hide" : "Show"}
-            </button>
-            <button onClick={() => updateField("password")} disabled={loadingField==="password"} className="bg-blue-600 text-white px-3 rounded hover:bg-blue-700">
-              {loadingField==="password" ? "Saving..." : "Save"}
-            </button>
-            <button onClick={() => cancelEdit("password")} className="bg-gray-200 px-3 rounded hover:bg-gray-300">Cancel</button>
-          </div>
-        )}
+        {/* Username */}
+        <div>
+          <label className="block text-gray-600 mb-1">Username</label>
+          <input
+            type="text"
+            value={username || ""}
+            onChange={(e) => setUsername(e.target.value)}
+            className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-400 outline-none"
+            required
+          />
+        </div>
 
-        {!editPassword && (
-          <button onClick={() => setEditPassword(true)} className="mt-2 text-blue-600 hover:underline">Edit Password</button>
-        )}
-      </div>
+        {/* Password */}
+        <div>
+          <label className="block text-gray-600 mb-1">Password</label>
 
-      {message && <p className="mt-4 text-center text-green-600 font-semibold">{message}</p>}
+          {!isEditingPassword ? (
+            <div className="flex items-center border rounded-lg p-3 bg-gray-50 justify-between">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password || ""}
+                readOnly
+                className="bg-transparent outline-none w-full text-gray-700"
+              />
+              <div className="flex gap-3 ml-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-gray-500 hover:text-blue-600"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingPassword(true)}
+                  className="text-green-600 hover:text-green-700"
+                >
+                  <Edit3 size={18} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center border rounded-lg p-3 bg-gray-50 justify-between">
+              <input
+                type={showNewPassword ? "text" : "password"}
+                placeholder="Enter new password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="bg-transparent outline-none w-full"
+              />
+              <div className="flex gap-3 ml-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="text-gray-500 hover:text-blue-600"
+                >
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingPassword(false);
+                    setNewPassword("");
+                  }}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Save Button */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow"
+        >
+          {loading ? "Saving..." : <Save size={18} />}
+          {loading ? "" : "Save Changes"}
+        </button>
+      </form>
+
+      {message && (
+        <p
+          className={`mt-5 text-center font-semibold ${
+            message.includes("✅")
+              ? "text-green-600"
+              : message.includes("⚠")
+              ? "text-red-600"
+              : "text-yellow-600"
+          }`}
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 }

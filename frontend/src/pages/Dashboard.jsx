@@ -10,7 +10,6 @@ const API_STAFF = "http://localhost:5000/api/staff/all"; // fetch all staff
 
 export default function Dashboard() {
   const [products, setProducts] = useState([]);
-  const [staffCount, setStaffCount] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -106,11 +105,43 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* First Row: Monthly Trend + Recent Consumption */}
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Products by Category */}
+        <div className="bg-white p-4 rounded-2xl shadow">
+          <h3 className="font-semibold mb-2 text-center">Products by Category</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={categoryData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="count" fill="#60a5fa" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Stock vs Consumed */}
+        <div className="bg-white p-4 rounded-2xl shadow">
+          <h3 className="font-semibold mb-2 text-center">Stock vs Consumed</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={90} label>
+                {pieData.map((entry, index) => (
+                  <Cell key={index} fill={PIE_COLORS[index]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Bottom Section: Monthly Trend + Recent Consumption */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Consumption Trend */}
-        <div className="bg-white p-5 rounded-2xl shadow hover:shadow-lg transition-all duration-300">
-          <h3 className="font-semibold mb-2 text-center text-gray-700">PO in Pipeline / Monthly Consumption</h3>
+        <div className="bg-white p-4 rounded-2xl shadow">
+          <h3 className="font-semibold mb-2 text-center">📈 Monthly Consumption Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={monthlyTrend} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -153,38 +184,6 @@ export default function Dashboard() {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Second Row: Products by Category + Stock vs Consumed */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Products by Category */}
-        <div className="bg-white p-5 rounded-2xl shadow hover:shadow-lg transition-all duration-300">
-          <h3 className="font-semibold mb-2 text-center text-gray-700">Products by Category</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={categoryData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" angle={-20} textAnchor="end" interval={0} height={60} label={{ value: 'Category', position: 'bottom', offset: 20 }} />
-              <YAxis label={{ value: 'Number of Products', angle: -90, position: 'insideLeft', offset: 10 }} />
-              <Tooltip />
-              <Bar dataKey="count" fill="#60a5fa" barSize={40} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Stock vs Consumed */}
-        <div className="bg-white p-5 rounded-2xl shadow hover:shadow-lg transition-all duration-300">
-          <h3 className="font-semibold mb-2 text-center text-gray-700">Stock vs Consumed</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={90} label>
-                {pieData.map((entry, index) => (
-                  <Cell key={index} fill={PIE_COLORS[index]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
         </div>
       </div>
     </div>
