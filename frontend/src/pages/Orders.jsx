@@ -5,6 +5,7 @@ const API_PRODUCTS = "http://localhost:5000/api/products";
 
 export default function OrdersPage() {
   const [products, setProducts] = useState([]);
+  const [locationsMap, setLocationsMap] = useState({});
 
   useEffect(() => {
     fetchProducts();
@@ -13,20 +14,33 @@ export default function OrdersPage() {
   const fetchProducts = async () => {
     try {
       const res = await axios.get(API_PRODUCTS);
-      setProducts(res.data);
+      const productsData = res.data;
+
+      // Build a map of locationId -> locationName for fast lookup
+      const map = {};
+      productsData.forEach((p) => {
+        (p.consumptionRecords || []).forEach((rec) => {
+          if (rec.usedAtLocation?._id) {
+            map[rec.usedAtLocation._id] = rec.usedAtLocation.name;
+          }
+        });
+      });
+
+      setLocationsMap(map);
+      setProducts(productsData);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching products:", err);
       alert("Failed to fetch products");
     }
   };
 
   // Flatten all consumption records with product info
   const consumptionRecords = products.flatMap((product) =>
-    product.consumptionRecords.map((record) => ({
+    (product.consumptionRecords || []).map((record) => ({
       productName: product.productName,
       categoryName: product.category?.name || "-",
       quantity: record.quantity,
-      usedAt: record.usedAtLocation?.name || "-",
+      usedAt: record.usedAtLocation?._id ? locationsMap[record.usedAtLocation._id] || "-" : "-",
       date: record.date ? new Date(record.date) : null,
       remarks: record.remarks || "-",
     }))

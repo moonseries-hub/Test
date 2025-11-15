@@ -1,12 +1,21 @@
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  // Edit states for each field
+  const [editUsername, setEditUsername] = useState(false);
+  const [editEmail, setEditEmail] = useState(false);
+  const [editPassword, setEditPassword] = useState(false);
+
+  const [usernameInput, setUsernameInput] = useState("");
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [loadingField, setLoadingField] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -14,95 +23,153 @@ export default function Profile() {
     const role = localStorage.getItem("role");
 
     if (role === "admin") {
-      setUser({ username: "admin", role: "admin" });
-      setUsername("admin");
+      const adminData = JSON.parse(localStorage.getItem("adminProfile")) || {};
+      setUser({ username: "admin", role: "admin", ...adminData });
     } else if (stored) {
       const data = JSON.parse(stored);
       setUser(data);
-      setUsername(data.username);
     }
   }, []);
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
+  const updateField = async (field) => {
     setMessage("");
-    setLoading(true);
+    setLoadingField(field);
 
     try {
+      const updatedData = {};
+      if (field === "username") updatedData.username = usernameInput || user.username;
+      if (field === "email") updatedData.email = emailInput || user.email;
+      if (field === "password") updatedData.password = passwordInput || user.password;
+
       if (user.role === "admin") {
-        // ✅ Local mock update for admin
-        const updatedAdmin = { username, password };
-        localStorage.setItem("adminProfile", JSON.stringify(updatedAdmin));
-        setMessage("Admin profile updated successfully!");
+        localStorage.setItem("adminProfile", JSON.stringify({ ...user, ...updatedData }));
+        setUser((prev) => ({ ...prev, ...updatedData }));
       } else {
-        // ✅ Actual backend update for staff
-        await axios.put(`http://localhost:5000/api/staff/${user._id}`, {
-          username,
-          password,
-        });
-        const updated = { ...user, username };
-        localStorage.setItem("user", JSON.stringify(updated));
-        setUser(updated);
-        setMessage("Profile updated successfully!");
+        await axios.put(`http://localhost:5000/api/staff/${user._id}`, updatedData);
+        setUser((prev) => ({ ...prev, ...updatedData }));
+        localStorage.setItem("user", JSON.stringify({ ...user, ...updatedData }));
       }
+
+      setMessage(`${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully!`);
+      // Reset inputs and edit state
+      if (field === "username") { setEditUsername(false); setUsernameInput(""); }
+      if (field === "email") { setEditEmail(false); setEmailInput(""); }
+      if (field === "password") { setEditPassword(false); setPasswordInput(""); setShowNewPassword(false); }
     } catch (err) {
-      console.error("Profile update error:", err);
-      setMessage("Error updating profile!");
+      console.error(err);
+      setMessage(`Error updating ${field}!`);
     } finally {
-      setLoading(false);
+      setLoadingField("");
     }
   };
 
+  const cancelEdit = (field) => {
+    if (field === "username") { setEditUsername(false); setUsernameInput(""); }
+    if (field === "email") { setEditEmail(false); setEmailInput(""); }
+    if (field === "password") { setEditPassword(false); setPasswordInput(""); setShowNewPassword(false); }
+  };
+
   if (!user)
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Loading profile...</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
 
   return (
-    <div className="max-w-lg mx-auto mt-10 bg-white shadow-lg rounded-xl p-6">
-      <h2 className="text-2xl font-bold mb-4 text-blue-700">Profile</h2>
+    <div className="max-w-md mx-auto mt-12 bg-white shadow-xl rounded-2xl p-6 space-y-6">
+      <h2 className="text-2xl font-bold text-blue-700">Profile</h2>
 
-      <p className="text-gray-700 mb-2">
-        <strong>Role:</strong> {user.role === "admin" ? "Admin" : "Staff"}
-      </p>
+      {/* Username */}
+      <div className="space-y-1">
+        <p className="text-gray-600">Username</p>
+        {!editUsername ? (
+          <div className="flex justify-between items-center bg-gray-100 p-2 rounded">
+            <span>{user.username}</span>
+            <button onClick={() => setEditUsername(true)} className="text-blue-600 hover:underline">Edit</button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={usernameInput}
+              onChange={(e) => setUsernameInput(e.target.value)}
+              className="border p-2 rounded flex-1"
+              placeholder="New username"
+            />
+            <button onClick={() => updateField("username")} disabled={loadingField==="username"} className="bg-blue-600 text-white px-3 rounded hover:bg-blue-700">
+              {loadingField==="username" ? "Saving..." : "Save"}
+            </button>
+            <button onClick={() => cancelEdit("username")} className="bg-gray-200 px-3 rounded hover:bg-gray-300">Cancel</button>
+          </div>
+        )}
+      </div>
 
-      <form onSubmit={handleUpdate} className="flex flex-col gap-4 mt-4">
-        <div>
-          <label className="block text-gray-600 mb-1">Username</label>
+      {/* Email */}
+      <div className="space-y-1">
+        <p className="text-gray-600">Email</p>
+        {!editEmail ? (
+          <div className="flex justify-between items-center bg-gray-100 p-2 rounded">
+            <span>{user.email || "-"}</span>
+            <button onClick={() => setEditEmail(true)} className="text-blue-600 hover:underline">Edit</button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              className="border p-2 rounded flex-1"
+              placeholder="New email"
+            />
+            <button onClick={() => updateField("email")} disabled={loadingField==="email"} className="bg-blue-600 text-white px-3 rounded hover:bg-blue-700">
+              {loadingField==="email" ? "Saving..." : "Save"}
+            </button>
+            <button onClick={() => cancelEdit("email")} className="bg-gray-200 px-3 rounded hover:bg-gray-300">Cancel</button>
+          </div>
+        )}
+      </div>
+
+      {/* Password */}
+      <div className="space-y-1">
+        <p className="text-gray-600 mb-1">Password</p>
+        <div className="relative">
           <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="border p-2 rounded w-full"
-            required
+            type={showOldPassword ? "text" : "password"}
+            value={user.password || ""}
+            readOnly
+            className="p-2 w-full bg-gray-100 border rounded pr-16 cursor-not-allowed"
           />
+          <button
+            type="button"
+            onClick={() => setShowOldPassword(!showOldPassword)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-700"
+          >
+            {showOldPassword ? "Hide" : "Show"}
+          </button>
         </div>
 
-        <div>
-          <label className="block text-gray-600 mb-1">New Password</label>
-          <input
-            type="password"
-            placeholder="Enter new password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="border p-2 rounded w-full"
-          />
-        </div>
+        {editPassword && (
+          <div className="flex gap-2 mt-2">
+            <input
+              type={showNewPassword ? "text" : "password"}
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              className="border p-2 rounded flex-1"
+              placeholder="New password"
+            />
+            <button onClick={() => setShowNewPassword(!showNewPassword)} className="px-3 bg-gray-200 rounded hover:bg-gray-300">
+              {showNewPassword ? "Hide" : "Show"}
+            </button>
+            <button onClick={() => updateField("password")} disabled={loadingField==="password"} className="bg-blue-600 text-white px-3 rounded hover:bg-blue-700">
+              {loadingField==="password" ? "Saving..." : "Save"}
+            </button>
+            <button onClick={() => cancelEdit("password")} className="bg-gray-200 px-3 rounded hover:bg-gray-300">Cancel</button>
+          </div>
+        )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-        >
-          {loading ? "Updating..." : "Update Profile"}
-        </button>
-      </form>
+        {!editPassword && (
+          <button onClick={() => setEditPassword(true)} className="mt-2 text-blue-600 hover:underline">Edit Password</button>
+        )}
+      </div>
 
-      {message && (
-        <p className="mt-4 text-center font-semibold text-green-600">{message}</p>
-      )}
+      {message && <p className="mt-4 text-center text-green-600 font-semibold">{message}</p>}
     </div>
   );
 }

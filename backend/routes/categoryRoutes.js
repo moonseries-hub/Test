@@ -7,40 +7,34 @@ const router = express.Router();
 /* -------------------- GET ALL CATEGORIES -------------------- */
 router.get("/", async (req, res) => {
   try {
-    const categories = await Category.find();
+    const categories = await Category.find().sort({ createdAt: -1 });
     res.json(categories);
   } catch (err) {
-    console.error("Error fetching categories:", err);
-    res.status(500).json({ error: "Server error while fetching categories" });
+    console.error(err);
+    res.status(500).json({ error: "Error fetching categories" });
   }
 });
 
-/* -------------------- CREATE CATEGORY -------------------- */
+/* -------------------- ADD CATEGORY -------------------- */
 router.post("/", async (req, res) => {
   try {
-    const { name, makes = [], models = [], minStock = 0 } = req.body;
-
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: "Category name is required" });
-    }
-
-    const existing = await Category.findOne({ name: name.trim() });
-    if (existing) {
-      return res.status(400).json({ error: "Category already exists" });
-    }
-
-    const category = new Category({
-      name: name.trim(),
-      makes,
-      models,
-      minStock,
-    });
-
-    const saved = await category.save();
-    res.status(201).json(saved);
+    const { name, makes, models, minStock } = req.body;
+    const category = await Category.create({ name, makes, models, minStock });
+    res.status(201).json(category);
   } catch (err) {
-    console.error("Error creating category:", err);
-    res.status(500).json({ error: "Server error while creating category" });
+    console.error(err);
+    res.status(500).json({ error: "Error adding category" });
+  }
+});
+
+/* -------------------- DELETE CATEGORY -------------------- */
+router.delete("/:id", async (req, res) => {
+  try {
+    await Category.findByIdAndDelete(req.params.id);
+    res.json({ message: "Category deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error deleting category" });
   }
 });
 
@@ -48,118 +42,85 @@ router.post("/", async (req, res) => {
 router.patch("/:id/updateMinStock", async (req, res) => {
   try {
     const { minStock } = req.body;
+    if (minStock === undefined || minStock < 0) {
+      return res.status(400).json({ error: "Invalid minStock value" });
+    }
 
+    // Update category
     const category = await Category.findByIdAndUpdate(
       req.params.id,
       { minStock },
       { new: true }
     );
 
-    if (!category) {
-      return res.status(404).json({ error: "Category not found" });
-    }
+    if (!category) return res.status(404).json({ error: "Category not found" });
+
+    // Update all products under this category
+    await Product.updateMany(
+      { category: category._id },
+      { minstock: minStock }
+    );
 
     res.json(category);
   } catch (err) {
-    console.error("Error updating min stock:", err);
-    res.status(500).json({ error: "Server error while updating min stock" });
+    console.error(err);
+    res.status(500).json({ error: "Failed to update min stock" });
   }
 });
 
-/* -------------------- ADD/REMOVE MAKES -------------------- */
+/* -------------------- ADD MAKE -------------------- */
 router.patch("/:id/add-make", async (req, res) => {
   try {
     const { make } = req.body;
-    if (!make || !make.trim()) return res.status(400).json({ error: "Make name is required" });
-
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
-
-    const trimmedMake = make.trim();
-    if (!category.makes.includes(trimmedMake)) {
-      category.makes.push(trimmedMake);
-      await category.save();
-    }
-
-    res.json({ message: "Make added successfully", makes: category.makes });
+    if (!category.makes.includes(make)) category.makes.push(make);
+    await category.save();
+    res.json(category);
   } catch (err) {
-    console.error("Error adding make:", err);
-    res.status(500).json({ error: "Server error while adding make" });
+    console.error(err);
+    res.status(500).json({ error: "Error adding make" });
   }
 });
 
+/* -------------------- REMOVE MAKE -------------------- */
 router.patch("/:id/remove-make", async (req, res) => {
   try {
     const { make } = req.body;
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
-
-    category.makes = category.makes.filter((m) => m !== make);
+    category.makes = category.makes.filter(m => m !== make);
     await category.save();
-
-    res.json({ message: "Make removed successfully", makes: category.makes });
+    res.json(category);
   } catch (err) {
-    console.error("Error removing make:", err);
-    res.status(500).json({ error: "Server error while removing make" });
+    console.error(err);
+    res.status(500).json({ error: "Error removing make" });
   }
 });
 
-/* -------------------- ADD/REMOVE MODELS -------------------- */
+/* -------------------- ADD MODEL -------------------- */
 router.patch("/:id/add-model", async (req, res) => {
   try {
     const { model } = req.body;
-    if (!model || !model.trim()) return res.status(400).json({ error: "Model name is required" });
-
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
-
-    const trimmedModel = model.trim();
-    if (!category.models.includes(trimmedModel)) {
-      category.models.push(trimmedModel);
-      await category.save();
-    }
-
-    res.json({ message: "Model added successfully", models: category.models });
+    if (!category.models.includes(model)) category.models.push(model);
+    await category.save();
+    res.json(category);
   } catch (err) {
-    console.error("Error adding model:", err);
-    res.status(500).json({ error: "Server error while adding model" });
+    console.error(err);
+    res.status(500).json({ error: "Error adding model" });
   }
 });
 
+/* -------------------- REMOVE MODEL -------------------- */
 router.patch("/:id/remove-model", async (req, res) => {
   try {
     const { model } = req.body;
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
-
-    category.models = category.models.filter((m) => m !== model);
+    category.models = category.models.filter(m => m !== model);
     await category.save();
-
-    res.json({ message: "Model removed successfully", models: category.models });
+    res.json(category);
   } catch (err) {
-    console.error("Error removing model:", err);
-    res.status(500).json({ error: "Server error while removing model" });
-  }
-});
-
-/* -------------------- DELETE CATEGORY + PRODUCTS -------------------- */
-router.delete("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const category = await Category.findById(id);
-    if (!category) return res.status(404).json({ error: "Category not found" });
-
-    const deletedProducts = await Product.deleteMany({ category: id });
-    await Category.findByIdAndDelete(id);
-
-    res.json({
-      message: "Category and its products deleted successfully",
-      deletedProducts: deletedProducts.deletedCount,
-    });
-  } catch (err) {
-    console.error("Error deleting category and products:", err);
-    res.status(500).json({ error: "Server error while deleting category" });
+    console.error(err);
+    res.status(500).json({ error: "Error removing model" });
   }
 });
 

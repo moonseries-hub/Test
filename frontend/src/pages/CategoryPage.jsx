@@ -37,11 +37,7 @@ export default function CategoryPage() {
   };
 
   const addCategory = async () => {
-    if (
-      !newCategory.name.trim() ||
-      !newCategory.make.trim() ||
-      !newCategory.model.trim()
-    )
+    if (!newCategory.name.trim() || !newCategory.make.trim() || !newCategory.model.trim())
       return toast.error("All fields are required");
 
     if (newCategory.minStock < 0 || isNaN(newCategory.minStock))
@@ -80,14 +76,8 @@ export default function CategoryPage() {
     const make = addingMake[catId];
     if (!make?.trim()) return toast.error("Enter make");
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/add-make`, {
-        make: make.trim(),
-      });
-      setCategories(
-        categories.map((c) =>
-          c._id === catId ? { ...c, makes: res.data.makes } : c
-        )
-      );
+      const res = await axios.patch(`${API_URL}/${catId}/add-make`, { make: make.trim() });
+      setCategories(categories.map((c) => (c._id === catId ? { ...c, makes: res.data.makes } : c)));
       setAddingMake({ ...addingMake, [catId]: "" });
       toast.success("✅ Make added successfully!");
     } catch (err) {
@@ -100,14 +90,8 @@ export default function CategoryPage() {
     const model = addingModel[catId];
     if (!model?.trim()) return toast.error("Enter model");
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/add-model`, {
-        model: model.trim(),
-      });
-      setCategories(
-        categories.map((c) =>
-          c._id === catId ? { ...c, models: res.data.models } : c
-        )
-      );
+      const res = await axios.patch(`${API_URL}/${catId}/add-model`, { model: model.trim() });
+      setCategories(categories.map((c) => (c._id === catId ? { ...c, models: res.data.models } : c)));
       setAddingModel({ ...addingModel, [catId]: "" });
       toast.success("✅ Model added successfully!");
     } catch (err) {
@@ -119,11 +103,7 @@ export default function CategoryPage() {
   const removeMakeFromCategory = async (catId, make) => {
     try {
       const res = await axios.patch(`${API_URL}/${catId}/remove-make`, { make });
-      setCategories(
-        categories.map((c) =>
-          c._id === catId ? { ...c, makes: res.data.makes } : c
-        )
-      );
+      setCategories(categories.map((c) => (c._id === catId ? { ...c, makes: res.data.makes } : c)));
       toast.success("🗑️ Make removed");
     } catch (err) {
       console.error(err.response?.data || err.message);
@@ -133,14 +113,8 @@ export default function CategoryPage() {
 
   const removeModelFromCategory = async (catId, model) => {
     try {
-      const res = await axios.patch(`${API_URL}/${catId}/remove-model`, {
-        model,
-      });
-      setCategories(
-        categories.map((c) =>
-          c._id === catId ? { ...c, models: res.data.models } : c
-        )
-      );
+      const res = await axios.patch(`${API_URL}/${catId}/remove-model`, { model });
+      setCategories(categories.map((c) => (c._id === catId ? { ...c, models: res.data.models } : c)));
       toast.success("🗑️ Model removed");
     } catch (err) {
       console.error(err.response?.data || err.message);
@@ -157,6 +131,7 @@ export default function CategoryPage() {
     }
   };
 
+  // --- Updated saveMinStock function with toast and all-products update ---
   const saveMinStock = async (catId) => {
     if (tempStock === "" || Number(tempStock) < 0) {
       setStockError("Stock cannot be negative or empty");
@@ -166,10 +141,11 @@ export default function CategoryPage() {
       const res = await axios.patch(`${API_URL}/${catId}/updateMinStock`, {
         minStock: Number(tempStock),
       });
+
       setCategories(categories.map((c) => (c._id === catId ? res.data : c)));
       setEditingStock(null);
       setTempStock("");
-      toast.success("📦 Minimum stock updated");
+      toast.success("📦 Minimum stock updated! All products under this category are updated.");
     } catch (err) {
       console.error(err.response?.data || err.message);
       toast.error("❌ Failed to update stock");
@@ -232,10 +208,7 @@ export default function CategoryPage() {
       {/* Category List */}
       <div className="space-y-4">
         {categories.map((cat) => (
-          <div
-            key={cat._id}
-            className="bg-white rounded-2xl shadow-md p-4 border border-gray-100"
-          >
+          <div key={cat._id} className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
             <div className="flex justify-between items-start">
               <div className="flex-1 space-y-2">
                 <h3 className="text-lg font-semibold text-gray-800">{cat.name}</h3>
@@ -249,17 +222,10 @@ export default function CategoryPage() {
                         min="0"
                         value={tempStock}
                         onChange={(e) => handleStockInput(e.target.value)}
-                        className={`border rounded px-2 py-1 w-20 ${
-                          stockError ? "border-red-500" : ""
-                        }`}
+                        className={`border rounded px-2 py-1 w-20 ${stockError ? "border-red-500" : ""}`}
                       />
-                      {stockError && (
-                        <span className="text-red-500 text-xs">{stockError}</span>
-                      )}
-                      <button
-                        onClick={() => saveMinStock(cat._id)}
-                        className="text-green-600 hover:text-green-800"
-                      >
+                      {stockError && <span className="text-red-500 text-xs">{stockError}</span>}
+                      <button onClick={() => saveMinStock(cat._id)} className="text-green-600 hover:text-green-800">
                         <Check size={18} />
                       </button>
                       <button
@@ -291,15 +257,9 @@ export default function CategoryPage() {
                 {/* Makes */}
                 <div className="flex flex-wrap gap-2">
                   {cat.makes.map((m) => (
-                    <span
-                      key={m}
-                      className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
-                    >
+                    <span key={m} className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm flex items-center gap-1">
                       {m}
-                      <button
-                        onClick={() => removeMakeFromCategory(cat._id, m)}
-                        className="text-red-500 hover:text-red-700 text-xs"
-                      >
+                      <button onClick={() => removeMakeFromCategory(cat._id, m)} className="text-red-500 hover:text-red-700 text-xs">
                         ×
                       </button>
                     </span>
@@ -311,15 +271,10 @@ export default function CategoryPage() {
                     type="text"
                     placeholder="Add Make"
                     value={addingMake[cat._id] || ""}
-                    onChange={(e) =>
-                      setAddingMake({ ...addingMake, [cat._id]: e.target.value })
-                    }
+                    onChange={(e) => setAddingMake({ ...addingMake, [cat._id]: e.target.value })}
                     className="border rounded px-2 py-1 flex-1"
                   />
-                  <button
-                    onClick={() => addMakeToCategory(cat._id)}
-                    className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600"
-                  >
+                  <button onClick={() => addMakeToCategory(cat._id)} className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600">
                     ➕
                   </button>
                 </div>
@@ -327,15 +282,9 @@ export default function CategoryPage() {
                 {/* Models */}
                 <div className="flex flex-wrap gap-2 mt-1">
                   {cat.models.map((m) => (
-                    <span
-                      key={m}
-                      className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
-                    >
+                    <span key={m} className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm flex items-center gap-1">
                       {m}
-                      <button
-                        onClick={() => removeModelFromCategory(cat._id, m)}
-                        className="text-red-500 hover:text-red-700 text-xs"
-                      >
+                      <button onClick={() => removeModelFromCategory(cat._id, m)} className="text-red-500 hover:text-red-700 text-xs">
                         ×
                       </button>
                     </span>
@@ -347,24 +296,16 @@ export default function CategoryPage() {
                     type="text"
                     placeholder="Add Model"
                     value={addingModel[cat._id] || ""}
-                    onChange={(e) =>
-                      setAddingModel({ ...addingModel, [cat._id]: e.target.value })
-                    }
+                    onChange={(e) => setAddingModel({ ...addingModel, [cat._id]: e.target.value })}
                     className="border rounded px-2 py-1 flex-1"
                   />
-                  <button
-                    onClick={() => addModelToCategory(cat._id)}
-                    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-                  >
+                  <button onClick={() => addModelToCategory(cat._id)} className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">
                     ➕
                   </button>
                 </div>
               </div>
 
-              <button
-                onClick={() => deleteCategory(cat._id)}
-                className="flex items-center gap-1 text-red-500 hover:text-red-700 text-sm font-medium ml-4"
-              >
+              <button onClick={() => deleteCategory(cat._id)} className="flex items-center gap-1 text-red-500 hover:text-red-700 text-sm font-medium ml-4">
                 <Trash2 size={16} /> Delete
               </button>
             </div>

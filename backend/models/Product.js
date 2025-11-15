@@ -1,41 +1,43 @@
 import mongoose from "mongoose";
 
-const consumptionRecordSchema = new mongoose.Schema({
+const consumptionSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
+  fromLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+  toLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
   usedAtLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-  date: { type: Date, default: Date.now },
+  
   remarks: { type: String, default: "" },
+  date: { type: Date, default: Date.now },
 });
 
-const productSchema = new mongoose.Schema(
-  {
-    productName: { type: String, required: true },
+const productSchema = new mongoose.Schema({
+  productName: { type: String, required: true },
+  category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
+  make: { type: String },
+  model: { type: String },
+  instock: { type: Number, default: 0 }, // initial stock
+  minstock: { type: Number, default: 0 },
+  locations: [
+    {
+      location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+      quantity: { type: Number, default: 0 },
+    },
+  ],
+  consumptionRecords: [consumptionSchema],
+});
 
-    // Store both references and readable names
-    category: { type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
-      required: true,},
-    categoryName: { type: String },
-    location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-    locationName: { type: String },
+// Virtual for total consumed
+productSchema.virtual("sold").get(function () {
+  return this.consumptionRecords.reduce((sum, rec) => sum + (rec.quantity || 0), 0);
+});
 
-    make: String,
-    model: String,
-    serialNumber: String,
+// Virtual for current stock
+productSchema.virtual("currentStock").get(function () {
+  return (this.instock || 0) - this.sold;
+});
 
-    quantity: { type: Number, default: 0, min: [0, "Quantity cannot be negative"] },
-    instock: { type: Number, default: 0, min: [0, "Stock cannot be negative"] },
-    sold: { type: Number, default: 0, min: [0, "Sold cannot be negative"] },
-    minstock: { type: Number, default: 0, min: [0, "Min stock cannot be negative"] },
-
-    dateOfReceipt: Date,
-    cost: Number,
-    po: String,
-    productUpdatingDate: Date,
-    mirvDate: Date,
-    consumptionRecords: [consumptionRecordSchema],
-  },
-  { timestamps: true }
-);
+// Ensure virtuals show up in JSON
+productSchema.set("toJSON", { virtuals: true });
+productSchema.set("toObject", { virtuals: true });
 
 export default mongoose.model("Product", productSchema);

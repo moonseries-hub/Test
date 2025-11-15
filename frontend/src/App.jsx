@@ -14,6 +14,9 @@ import Orders from "./pages/Orders";
 import LogoutPage from "./pages/LogoutPage";
 import AddStaff from "./pages/Add_Staff";
 import Profile from "./pages/Profile";
+import ConsumptionHistory from "./pages/ConsumptionHistory";
+
+
 export default function App() {
   const { user } = useUser();
 
@@ -44,6 +47,7 @@ export default function App() {
             <Route path="categorypage" element={<CategoryPage />} />
             <Route path="orders" element={<Orders />} />
             <Route path="logoutpage" element={<LogoutPage />} />
+            <Route path="consumption_history" element={<ConsumptionHistory user={user} />} />
             <Route path="add_staff" element={<AddStaff />} />
             <Route path="/profile" element={<Profile />} />
 

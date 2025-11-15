@@ -11,6 +11,7 @@ export default function AddProduct() {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [makes, setMakes] = useState([]);
   const [models, setModels] = useState([]);
+  const [categoryMinStock, setCategoryMinStock] = useState(0); // minStock of selected category
 
   const [newMake, setNewMake] = useState("");
   const [newModel, setNewModel] = useState("");
@@ -33,7 +34,7 @@ export default function AddProduct() {
     cost: "",
     po: "",
     mirvDate: "",
-    productUpdatingDate: new Date().toISOString().split("T")[0], // ✅ auto-fill
+    productUpdatingDate: new Date().toISOString().split("T")[0],
   });
 
   // Fetch categories and locations
@@ -64,6 +65,11 @@ export default function AddProduct() {
         setErrors((prev) => ({
           ...prev,
           quantity: "❌ Quantity must be greater than 0",
+        }));
+      } else if (value < categoryMinStock) {
+        setErrors((prev) => ({
+          ...prev,
+          quantity: `⚠️ Quantity is below category minimum stock (${categoryMinStock})`,
         }));
       } else {
         setErrors((prev) => ({ ...prev, quantity: "" }));
@@ -101,15 +107,17 @@ export default function AddProduct() {
       if (selectedCat) {
         setMakes(selectedCat.makes || []);
         setModels(selectedCat.models || []);
+        setCategoryMinStock(selectedCat.minStock || 0);
         setFormData((prev) => ({ ...prev, make: "", model: "" }));
       } else {
         setMakes([]);
         setModels([]);
+        setCategoryMinStock(0);
       }
     }
   };
 
-  // ✅ Add New Location
+  // Add New Location
   const handleAddLocation = async () => {
     if (!newLocationName.trim()) return alert("Enter location name");
     try {
@@ -127,7 +135,7 @@ export default function AddProduct() {
     }
   };
 
-  // ✅ Add New Make or Model
+  // Add New Make or Model
   const handleAddMakeOrModel = async (type) => {
     if (!formData.category) return alert("Select a category first!");
     const value = type === "make" ? newMake.trim() : newModel.trim();
@@ -152,22 +160,16 @@ export default function AddProduct() {
     }
   };
 
-  // ✅ Submit Product
+  // Submit Product
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Block if errors exist
     if (errors.quantity || errors.cost || errors.mirvDate) {
       alert("⚠️ Fix all validation errors before submitting.");
       return;
     }
 
-    if (
-      !formData.productName.trim() ||
-      !formData.category ||
-      !formData.make ||
-      !formData.location
-    )
+    if (!formData.productName.trim() || !formData.category || !formData.make || !formData.location)
       return alert("Product Name, Category, Make, and Location are required.");
 
     try {
@@ -190,6 +192,7 @@ export default function AddProduct() {
       setSelectedLocation("");
       setMakes([]);
       setModels([]);
+      setCategoryMinStock(0);
     } catch (err) {
       console.error("Error adding product:", err);
       alert("❌ Failed to add product.");
@@ -233,9 +236,16 @@ export default function AddProduct() {
               </option>
             ))}
           </select>
+
+          {/* Show Min Stock */}
+          {formData.category && (
+            <p className="mt-1 text-sm text-gray-700">
+              Minimum Stock for this category: <strong>{categoryMinStock}</strong>
+            </p>
+          )}
         </div>
 
-        {/* Add New Make */}
+        {/* Make */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Make</label>
           <div className="flex gap-2">
@@ -269,7 +279,7 @@ export default function AddProduct() {
           </div>
         </div>
 
-        {/* Add New Model */}
+        {/* Model */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Model (Optional)</label>
           <div className="flex gap-2">
@@ -364,7 +374,7 @@ export default function AddProduct() {
           {errors.mirvDate && <p className="text-red-500 text-sm">{errors.mirvDate}</p>}
         </div>
 
-        {/* Auto Product Updating Date */}
+        {/* Product Updating Date */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Product Updating Date</label>
           <input

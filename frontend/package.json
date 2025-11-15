@@ -9,6 +9,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.12.2",
     "install": "^0.13.0",
+    "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.2",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.543.0",
@@ -19,8 +20,9 @@
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.4",
     "react-scripts": "5.0.1",
-    "recharts": "^3.2.1",
-    "web-vitals": "^2.1.4"
+    "recharts": "^3.4.1",
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",

@@ -7,13 +7,10 @@ import {
   Package,
   FolderTree,
   ShoppingCart,
-  AlertTriangle,
   FileText,
-  HelpCircle,
   LogOut,
   ChevronDown,
   ChevronRight,
-  Search,
   Bell,
   User
 } from "lucide-react";
@@ -33,7 +30,6 @@ export default function Layout() {
     ...(role === "admin" ? [{ name: "Add Staff", icon: <FolderTree size={18} />, path: "/add_staff" }] : []),
     { name: "Report", icon: <FileText size={18} />, path: "/reportpage" },
     { name: "Consumption History", icon: <ShoppingCart size={18} />, path: "/orders" },
-    
     { name: "LOGOUT", icon: <LogOut size={18} />, path: "/LogoutPage" },
   ];
 
@@ -86,15 +82,7 @@ export default function Layout() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <header className="flex items-center justify-between bg-white shadow px-6 py-3">
-          <div className="flex items-center bg-gray-100 px-3 py-2 rounded-lg w-1/3">
-            <Search className="text-gray-500 mr-2" size={18} />
-            <input
-              type="text"
-              placeholder="Search items, POs, vendors..."
-              className="bg-transparent outline-none flex-1 text-sm"
-            />
-          </div>
+        <header className="flex items-center justify-end bg-white shadow px-6 py-3">
           <div className="flex items-center gap-6">
             <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium">{role}</span>
             <Bell className="text-gray-600 cursor-pointer" size={20} />
