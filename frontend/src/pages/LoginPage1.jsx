@@ -1,4 +1,3 @@
-// frontend/pages/LoginPage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -27,7 +26,7 @@ export default function LoginPage() {
       let userObj = null;
       if (data.role === "admin") userObj = { username: "admin", role: "admin", token: "admin-token" };
       else if (data.role === "staff" && data.staff)
-        userObj = { id: data.staff._id, username: data.staff.username, role: "staff", token: "staff-token" };
+        userObj = { _id: data.staff._id, username: data.staff.username, role: "staff", token: "staff-token" };
 
       if (!userObj) {
         alert("Login failed");

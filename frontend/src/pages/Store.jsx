@@ -8,12 +8,7 @@ const API_CATEGORIES = "http://localhost:5000/api/categories";
 export default function Store() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [filters, setFilters] = useState({
-    category: "",
-    make: "",
-    model: "",
-    stockStatus: "", // ✅ single unified filter
-  });
+  const [filters, setFilters] = useState({ category: "", make: "", model: "", status: "" });
 
   useEffect(() => { fetchData(); }, []);
 
@@ -31,128 +26,63 @@ export default function Store() {
     fetchData();
   };
 
+  const handleFilterChange = e => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const resetFilters = () => setFilters({ category: "", make: "", model: "", status: "" });
+
+  const getStatus = p => {
+    const stock = p.availableStock || 0;
+    if (stock <= 0) return { label: "Out of Stock", color: "bg-red-200 text-red-800" };
+    if (stock <= (p.minstock || 0)) return { label: "Low Stock", color: "bg-yellow-200 text-yellow-800" };
+    return { label: "Available", color: "bg-green-200 text-green-800" };
+  };
+
   const filteredProducts = products.filter(p => {
     if (filters.status) {
-      if (filters.status === "available" && p.currentStock <= (p.minstock || 0)) return false;
-      if (filters.status === "low" && (p.currentStock <= 0 || p.currentStock > (p.minstock || 0))) return false;
-      if (filters.status === "out" && p.currentStock > 0) return false;
+      const stock = p.availableStock || 0;
+      if (filters.status === "available" && stock <= (p.minstock || 0)) return false;
+      if (filters.status === "low" && (stock <= 0 || stock > (p.minstock || 0))) return false;
+      if (filters.status === "out" && stock > 0) return false;
     }
     if (filters.category && p.category?._id !== filters.category) return false;
     if (filters.make && p.make !== filters.make) return false;
     if (filters.model && p.model !== filters.model) return false;
-
-    // unified stock filter
-    const instock = p.instock || 0;
-    const min = p.minStock || 0;
-
-    switch (filters.stockStatus) {
-      case "out":
-        return instock === 0;
-      case "below":
-        return instock > 0 && instock < min;
-      case "at":
-        return instock === min && min > 0;
-      case "healthy":
-        return instock > min;
-      default:
-        return true;
-    }
+    return true;
   });
-
-  const selectedCategory = categories.find(c => c._id === filters.category);
-  const makeOptions = selectedCategory?.makes || [];
-  const modelOptions = selectedCategory?.models || [];
-
-  const handleFilterChange = e => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value, ...(name === "category" ? { make: "", model: "" } : {}) }));
-  };
-
-  const getStatus = p => {
-    if (p.currentStock <= 0) return { label: "Out of Stock", color: "bg-red-200 text-red-800" };
-    if (p.currentStock <= (p.minstock || 0)) return { label: "Low Stock", color: "bg-yellow-200 text-yellow-800" };
-    return { label: "Available", color: "bg-green-200 text-green-800" };
-  };
 
   return (
     <div className="p-4">
       <h2 className="font-bold text-lg mb-4">Inventory Dashboard</h2>
-      <div className="bg-white p-4 rounded-lg shadow mb-4 flex flex-wrap gap-4">
-        <div className="flex flex-col">
-          <label>Category</label>
-          <select
-            name="category"
-            value={filters.category}
-            onChange={handleFilterChange}
-            className="border rounded px-3 py-2"
-          >
-            <option value="">All</option>
-            {categories.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
 
-        <div className="flex flex-col">
-          <label>Make</label>
-          <select
-            name="make"
-            value={filters.make}
-            onChange={handleFilterChange}
-            className="border rounded px-3 py-2"
-            disabled={!filters.category}
-          >
-            <option value="">All</option>
-            {makeOptions.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label>Model</label>
-          <select
-            name="model"
-            value={filters.model}
-            onChange={handleFilterChange}
-            className="border rounded px-3 py-2"
-            disabled={!filters.category}
-          >
-            <option value="">All</option>
-            {modelOptions.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* ✅ Unified Stock Filter */}
-        <div className="flex flex-col">
-          <label>Stock Status</label>
-          <select
-            name="stockStatus"
-            value={filters.stockStatus}
-            onChange={handleFilterChange}
-            className="border rounded px-3 py-2"
-          >
-            <option value="">All</option>
-            <option value="available">Available</option>
-            <option value="low">Low Stock</option>
-            <option value="out">Out of Stock</option>
-            <option value="below">Below Min</option>
-            <option value="at">At Min</option>
-            <option value="healthy">Healthy</option>
-          </select>
-        </div>
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-lg shadow mb-4 flex flex-wrap gap-4 items-center">
+        <select name="category" value={filters.category} onChange={handleFilterChange}>
+          <option value="">All Categories</option>
+          {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+        </select>
+        <select name="make" value={filters.make} onChange={handleFilterChange}>
+          <option value="">All Makes</option>
+          {Array.from(new Set(categories.flatMap(c => c.makes || []))).map(m => <option key={m}>{m}</option>)}
+        </select>
+        <select name="model" value={filters.model} onChange={handleFilterChange}>
+          <option value="">All Models</option>
+          {Array.from(new Set(categories.flatMap(c => c.models || []))).map(m => <option key={m}>{m}</option>)}
+        </select>
+        <select name="status" value={filters.status} onChange={handleFilterChange}>
+          <option value="">All Status</option>
+          <option value="available">Available</option>
+          <option value="low">Low Stock</option>
+          <option value="out">Out of Stock</option>
+        </select>
+        <button onClick={resetFilters} className="bg-gray-300 px-3 py-1 rounded">Reset</button>
       </div>
 
+      {/* Table */}
       <div className="bg-white p-4 rounded-lg shadow overflow-x-auto max-h-[80vh]">
-        <table className="w-full table-auto border-collapse border border-gray-200">
+        <table className="w-full border-collapse border border-gray-200">
           <thead>
             <tr className="bg-gray-100 sticky top-0">
               <th className="border px-2 py-1">Product</th>
@@ -162,7 +92,7 @@ export default function Store() {
               <th className="border px-2 py-1">In-Stock</th>
               <th className="border px-2 py-1">Min Stock</th>
               <th className="border px-2 py-1">Consumed</th>
-              <th className="border px-2 py-1">Stock Status</th>
+              <th className="border px-2 py-1">Status</th>
               <th className="border px-2 py-1">Action</th>
             </tr>
           </thead>
@@ -175,12 +105,12 @@ export default function Store() {
                   <td className="border px-2 py-1">{p.category?.name || "-"}</td>
                   <td className="border px-2 py-1">{p.make}</td>
                   <td className="border px-2 py-1">{p.model || "-"}</td>
-                  <td className={`border px-2 py-1 font-bold ${status.color}`}>{p.currentStock}</td>
+                  <td className={`border px-2 py-1 font-bold ${status.color}`}>{p.availableStock}</td>
                   <td className="border px-2 py-1">{p.minstock || 0}</td>
-                  <td className="border px-2 py-1">{p.sold || 0}</td>
+                  <td className="border px-2 py-1">{p.consumed || 0}</td>
                   <td className={`border px-2 py-1 font-bold ${status.color}`}>{status.label}</td>
                   <td className="border px-2 py-1">
-                    <button onClick={() => handleDelete(p._id, p.productName)} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 mx-auto">
+                    <button onClick={() => handleDelete(p._id, p.productName)} className="bg-red-500 px-2 py-1 text-white rounded flex items-center gap-1 mx-auto">
                       <Trash2 size={16} /> Delete
                     </button>
                   </td>

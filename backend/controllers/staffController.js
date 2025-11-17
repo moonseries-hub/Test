@@ -1,6 +1,6 @@
+
 import Staff from "../models/Staff.js";
 import mongoose from "mongoose";
-
 // ✅ Login
 export const loginStaff = async (req, res) => {
   const { username, password } = req.body;
@@ -17,6 +17,7 @@ export const loginStaff = async (req, res) => {
     staff.lastLogin = new Date();
     await staff.save();
 
+    // Return the full staff object (including _id) for staff login
     res.json({ role: "staff", staff });
   } catch (err) {
     console.error("Login error:", err);
@@ -49,31 +50,6 @@ export const getStaffById = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error fetching staff" });
-  }
-};
-
-// ✅ Create staff
-export const createStaff = async (req, res) => {
-  const { username, password, email, role } = req.body;
-
-  if (!username || !password)
-    return res.status(400).json({ message: "Username & password required" });
-
-  try {
-    const exists = await Staff.findOne({ username });
-    if (exists) return res.status(400).json({ message: "Username already exists" });
-
-    const newStaff = await Staff.create({
-      username,
-      password,
-      email: email || "",
-      role: role || "staff",
-    });
-
-    res.status(201).json(newStaff);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error creating staff" });
   }
 };
 
@@ -122,3 +98,5 @@ export const deleteStaff = async (req, res) => {
     res.status(500).json({ message: "Error deleting staff" });
   }
 };
+
+

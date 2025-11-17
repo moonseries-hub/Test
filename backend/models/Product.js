@@ -4,36 +4,42 @@ const consumptionSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   fromLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
   toLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+  usedAtLocation: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+  consumedByName: { type: String, required: true },
+  remarks: { type: String, default: "" },
   date: { type: Date, default: Date.now },
 });
 
 const productSchema = new mongoose.Schema({
-  productName: { type: String, required: true },
+  productName: String,
   category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
-  make: { type: String },
-  model: { type: String },
-  instock: { type: Number, default: 0 }, // initial stock
+  make: String,
+  model: String,
+  instock: { type: Number, default: 0 },
+  openingStock: { type: Number, default: 0 },
   minstock: { type: Number, default: 0 },
   locations: [
     {
       location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-      quantity: { type: Number, default: 0 },
+      quantity: Number,
     },
   ],
   consumptionRecords: [consumptionSchema],
 });
 
-// Virtual for total consumed
-productSchema.virtual("sold").get(function () {
+// === Virtuals ===
+productSchema.virtual("consumed").get(function () {
   return this.consumptionRecords.reduce((sum, rec) => sum + (rec.quantity || 0), 0);
 });
 
-// Virtual for current stock
-productSchema.virtual("currentStock").get(function () {
-  return (this.instock || 0) - this.sold;
+productSchema.virtual("newStock").get(function () {
+  return (this.instock || 0) - (this.openingStock || 0);
 });
 
-// Ensure virtuals show up in JSON
+productSchema.virtual("availableStock").get(function () {
+  return (this.openingStock || 0) + this.newStock - this.consumed;
+});
+
 productSchema.set("toJSON", { virtuals: true });
 productSchema.set("toObject", { virtuals: true });
 

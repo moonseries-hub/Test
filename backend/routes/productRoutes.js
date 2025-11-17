@@ -1,144 +1,101 @@
-  import express from "express";
-  import mongoose from "mongoose";
-  import Product from "../models/Product.js";
-  import Category from "../models/Category.js";
-  import Location from "../models/Location.js";
+import express from "express";
+import mongoose from "mongoose";
+import Product from "../models/Product.js";
+import Category from "../models/category.js";
+import Location from "../models/Location.js";
 
-  const router = express.Router();
+const router = express.Router();
 
-  // GET all products
-  router.get("/", async (req, res) => {
-    try {
-      const products = await Product.find()
-        .populate("category", "name minStock")
-        .populate("locations.location", "name")
-        .populate("consumptionRecords.fromLocation", "name")
-        .populate("consumptionRecords.toLocation", "name")
-        .populate("consumptionRecords.usedAtLocation", "name")
-        .sort({ createdAt: -1 });
-
-      res.json(products);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Error fetching products" });
-    }
-  });
-
-/* -------------------- ADD PRODUCT -------------------- */
-router.post("/", async (req, res) => {
+// GET all products
+router.get("/", async (req, res) => {
   try {
-    const {
-      productName,
-      category,
-      location,
-      make,
-      model,
-      serialNumber,
-      quantity,
-      minstock,
-      dateOfReceipt,
-      cost,
-      po,
-      productUpdatingDate,
-      mirvDate,
-    } = req.body;
-
-      const cat = await Category.findById(categoryId);
-      const loc = await Location.findById(location);
-
-    if (!cat) return res.status(404).json({ error: "Category not found" });
-    if (!loc) return res.status(404).json({ error: "Location not found" });
-
-    const initialQty = Number(quantity) || 0;
-
-    const product = await Product.create({
-      productName,
-      category,
-      categoryName: cat.name,
-      location,
-      locationName: loc.name,
-      make,
-      model,
-      serialNumber,
-      quantity: initialQty,
-      instock: initialQty,
-      sold: 0,
-      minstock: Number(minstock) || 0,
-      dateOfReceipt,
-      cost,
-      po,
-      productUpdatingDate,
-      mirvDate,
-      consumptionRecords: [],
-    });
-
-      res.status(201).json(product);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Error adding product" });
-    }
-  });
-
-/* -------------------- UPDATE PRODUCT -------------------- */
-router.put("/:id", async (req, res) => {
-  try {
-    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-
-    if (!updatedProduct) return res.status(404).json({ error: "Product not found" });
-
-      res.json(updatedProduct);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Error updating product" });
-    }
-  });
-
-/* -------------------- DELETE PRODUCT -------------------- */
-router.delete("/:id", async (req, res) => {
-  try {
-    const product = await Product.findByIdAndDelete(req.params.id);
-
-    if (!product) return res.status(404).json({ error: "Product not found" });
-
-    res.json({ message: "Product deleted successfully" });
+    const products = await Product.find()
+      .populate("category", "name minStock")
+      .populate("locations.location", "name")
+      .populate("consumptionRecords.fromLocation", "name")
+      .populate("consumptionRecords.toLocation", "name")
+      .populate("consumptionRecords.usedAtLocation", "name")
+      .sort({ createdAt: -1 });
+    res.json(products);
   } catch (err) {
-    console.error("Error deleting product:", err);
-    res.status(500).json({ error: "Error deleting product" });
+    res.status(500).json({ error: err.message });
   }
 });
 
-/* -------------------- CONSUME PRODUCT -------------------- */
+// ADD/UPDATE product
+router.post("/", async (req, res) => {
+  try {
+    const { productName, category: categoryId, location, make, model, quantity } = req.body;
+
+    const cat = await Category.findById(categoryId);
+    const loc = await Location.findById(location);
+    if (!cat) return res.status(404).json({ error: "Category not found" });
+    if (!loc) return res.status(404).json({ error: "Location not found" });
+
+    const existingProduct = await Product.findOne({ productName, make, model, category: categoryId });
+
+    if (existingProduct) {
+      existingProduct.instock += Number(quantity);
+      const locIndex = existingProduct.locations.findIndex(l => l.location.toString() === location);
+      if (locIndex >= 0) {
+        existingProduct.locations[locIndex].quantity += Number(quantity);
+      } else {
+        existingProduct.locations.push({ location: loc, quantity: Number(quantity) });
+      }
+      await existingProduct.save();
+      return res.json(existingProduct);
+    }
+
+    const product = await Product.create({
+      productName,
+      category: categoryId,
+      make,
+      model,
+      instock: quantity,
+      openingStock: quantity,
+      minstock: cat.minStock,
+      locations: [{ location: loc._id, quantity }],
+      consumptionRecords: [],
+    });
+
+    res.status(201).json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CONSUME product
 router.patch("/:id/consume", async (req, res) => {
   try {
-    const { quantity, fromLocationId, toLocationId, remarks } = req.body;
+    const { quantity, fromLocationId, toLocationId, remarks, consumedByName } = req.body;
+    const qty = Number(quantity);
 
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found" });
 
-    if (quantity > product.instock) {
-      return res
-        .status(400)
-        .json({ error: `Quantity exceeds available stock (${product.instock})` });
-    }
-
-    product.instock -= Number(quantity);
+    const currentStock = product.availableStock;
+    if (qty > currentStock) return res.status(400).json({ error: `Exceeds available stock (${currentStock})` });
 
     product.consumptionRecords.push({
-      quantity,
-      fromLocation: fromLocationId,
-      toLocation: toLocationId,
+      quantity: qty,
+      fromLocation: fromLocationId || null,
+      toLocation: toLocationId || null,
+      usedAtLocation: fromLocationId || null,
+      consumedByName,
       remarks,
       date: new Date(),
     });
 
     await product.save();
+    const updatedProduct = await Product.findById(product._id)
+      .populate("category", "name minStock")
+      .populate("consumptionRecords.fromLocation", "name")
+      .populate("consumptionRecords.toLocation", "name")
+      .populate("consumptionRecords.usedAtLocation", "name");
 
-    res.json({ message: "Product consumed successfully", product });
+    res.json(updatedProduct);
   } catch (err) {
-    console.error("Error consuming product:", err);
-    res.status(500).json({ error: "Error consuming product" });
+    res.status(500).json({ error: err.message });
   }
 });
 

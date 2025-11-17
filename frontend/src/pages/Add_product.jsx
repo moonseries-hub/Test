@@ -1,8 +1,7 @@
-// src/pages/AddProduct.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api"; // Backend base URL
+const API_URL = "http://localhost:5000/api";
 
 export default function AddProduct() {
   const [categories, setCategories] = useState([]);
@@ -11,10 +10,12 @@ export default function AddProduct() {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [makes, setMakes] = useState([]);
   const [models, setModels] = useState([]);
-  const [categoryMinStock, setCategoryMinStock] = useState(0); // minStock of selected category
+  const [categoryMinStock, setCategoryMinStock] = useState(0);
 
   const [newMake, setNewMake] = useState("");
   const [newModel, setNewModel] = useState("");
+
+  const today = new Date().toISOString().split("T")[0];
 
   const [errors, setErrors] = useState({
     quantity: "",
@@ -34,10 +35,10 @@ export default function AddProduct() {
     cost: "",
     po: "",
     mirvDate: "",
-    productUpdatingDate: new Date().toISOString().split("T")[0],
+    productUpdatingDate: today,
   });
 
-  // Fetch categories and locations
+  // Fetch categories & locations
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -48,76 +49,84 @@ export default function AddProduct() {
         setCategories(catRes.data);
         setLocations(locRes.data);
       } catch (err) {
-        console.error("Error fetching data:", err.response?.data || err.message);
+        console.error("Error fetching data:", err);
       }
     };
     fetchData();
   }, []);
 
-  // Handle input changes + validations
+  // Handle all field changes
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     setFormData((prev) => ({ ...prev, [name]: value }));
 
+    // QUANTITY VALIDATION
     if (name === "quantity") {
       if (value <= 0) {
-        setErrors((prev) => ({
-          ...prev,
-          quantity: "❌ Quantity must be greater than 0",
-        }));
+        setErrors((prev) => ({ ...prev, quantity: "❌ Quantity must be > 0" }));
       } else if (value < categoryMinStock) {
         setErrors((prev) => ({
           ...prev,
-          quantity: `⚠️ Quantity is below category minimum stock (${categoryMinStock})`,
+          quantity: `⚠️ Quantity below category minimum stock (${categoryMinStock})`,
         }));
       } else {
         setErrors((prev) => ({ ...prev, quantity: "" }));
       }
     }
 
+    // COST VALIDATION
     if (name === "cost") {
       if (value <= 0) {
-        setErrors((prev) => ({
-          ...prev,
-          cost: "❌ Cost must be greater than 0",
-        }));
-      } else {
-        setErrors((prev) => ({ ...prev, cost: "" }));
-      }
+        setErrors((prev) => ({ ...prev, cost: "❌ Cost must be > 0" }));
+      } else setErrors((prev) => ({ ...prev, cost: "" }));
     }
 
-    if (name === "mirvDate" || name === "dateOfReceipt") {
-      const receipt = name === "dateOfReceipt" ? value : formData.dateOfReceipt;
-      const mirv = name === "mirvDate" ? value : formData.mirvDate;
+    // DATE VALIDATIONS
+    const receipt = name === "dateOfReceipt" ? value : formData.dateOfReceipt;
+    const mirv = name === "mirvDate" ? value : formData.mirvDate;
 
-      if (receipt && mirv && new Date(mirv) < new Date(receipt)) {
+    // Receipt Date cannot be in future
+    if (name === "dateOfReceipt" && value > today) {
+      setErrors((prev) => ({
+        ...prev,
+        mirvDate: "",
+        receiptDate: "❌ Date of Receipt cannot be in the future",
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, receiptDate: "" }));
+    }
+
+    // MIRV validation: must be after receipt + not in future
+    if (receipt && mirv) {
+      if (new Date(mirv) < new Date(receipt)) {
         setErrors((prev) => ({
           ...prev,
-          mirvDate: "❌ MIRV Date must be after Date of Receipt",
+          mirvDate: "❌ MIRV Date must be AFTER Date of Receipt",
+        }));
+      } else if (mirv > today) {
+        setErrors((prev) => ({
+          ...prev,
+          mirvDate: "❌ MIRV Date cannot be in the future",
         }));
       } else {
         setErrors((prev) => ({ ...prev, mirvDate: "" }));
       }
     }
 
-    // When category changes, reset dependent fields
+    // On category change update makes/models
     if (name === "category") {
-      const selectedCat = categories.find((c) => c._id === value);
-      if (selectedCat) {
-        setMakes(selectedCat.makes || []);
-        setModels(selectedCat.models || []);
-        setCategoryMinStock(selectedCat.minStock || 0);
+      const selected = categories.find((c) => c._id === value);
+      if (selected) {
+        setMakes(selected.makes || []);
+        setModels(selected.models || []);
+        setCategoryMinStock(selected.minStock || 0);
         setFormData((prev) => ({ ...prev, make: "", model: "" }));
-      } else {
-        setMakes([]);
-        setModels([]);
-        setCategoryMinStock(0);
       }
     }
   };
 
-  // Add New Location
+  // Add new location
   const handleAddLocation = async () => {
     if (!newLocationName.trim()) return alert("Enter location name");
     try {
@@ -125,28 +134,26 @@ export default function AddProduct() {
         name: newLocationName.trim(),
       });
       setLocations([...locations, res.data]);
-      setSelectedLocation(res.data._id);
       setFormData((prev) => ({ ...prev, location: res.data._id }));
       setNewLocationName("");
-      alert("✅ Location added!");
+      alert("✅ Location added");
     } catch (err) {
-      console.error("Error adding location:", err);
       alert("❌ Failed to add location");
     }
   };
 
-  // Add New Make or Model
+  // Add Make / Model
   const handleAddMakeOrModel = async (type) => {
-    if (!formData.category) return alert("Select a category first!");
+    if (!formData.category) return alert("Select category first!");
+
     const value = type === "make" ? newMake.trim() : newModel.trim();
-    if (!value) return alert(`Enter new ${type} name`);
+    if (!value) return alert(`Enter new ${type}`);
 
     try {
       await axios.patch(`${API_URL}/categories/${formData.category}/add-${type}`, {
         [type]: value,
       });
 
-      alert(`✅ ${type} added successfully!`);
       if (type === "make") {
         setMakes((prev) => [...prev, value]);
         setNewMake("");
@@ -154,27 +161,33 @@ export default function AddProduct() {
         setModels((prev) => [...prev, value]);
         setNewModel("");
       }
+
+      alert(`✅ ${type} added`);
     } catch (err) {
-      console.error(`Error adding ${type}:`, err);
       alert(`❌ Failed to add ${type}`);
     }
   };
 
-  // Submit Product
+  // Submit product
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (errors.quantity || errors.cost || errors.mirvDate) {
-      alert("⚠️ Fix all validation errors before submitting.");
+    if (errors.quantity || errors.cost || errors.mirvDate || errors.receiptDate) {
+      alert("❌ Fix all errors before submitting.");
       return;
     }
 
-    if (!formData.productName.trim() || !formData.category || !formData.make || !formData.location)
-      return alert("Product Name, Category, Make, and Location are required.");
+    if (!formData.productName || !formData.category || !formData.make || !formData.location) {
+      alert("❌ Fill all required fields.");
+      return;
+    }
 
     try {
       await axios.post(`${API_URL}/products`, formData);
+
       alert("✅ Product added successfully!");
+
+      // Reset form
       setFormData({
         productName: "",
         category: "",
@@ -187,92 +200,92 @@ export default function AddProduct() {
         cost: "",
         po: "",
         mirvDate: "",
-        productUpdatingDate: new Date().toISOString().split("T")[0],
+        productUpdatingDate: today,
       });
-      setSelectedLocation("");
       setMakes([]);
       setModels([]);
-      setCategoryMinStock(0);
     } catch (err) {
-      console.error("Error adding product:", err);
+      console.error(err);
       alert("❌ Failed to add product.");
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto bg-white p-8 rounded-2xl shadow-lg mt-8">
-      <h2 className="text-3xl font-bold mb-6 text-blue-900 border-b pb-3 text-center">
+      <h2 className="text-3xl font-bold mb-6 text-blue-900 text-center border-b pb-3">
         Add New Product
       </h2>
 
       <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleSubmit}>
+        
         {/* Product Name */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Product Name</label>
+          <label>Product Name</label>
           <input
             type="text"
             name="productName"
             value={formData.productName}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full border rounded px-3 py-2"
             required
           />
         </div>
 
         {/* Category */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Category</label>
+          <label>Category</label>
           <select
             name="category"
             value={formData.category}
             onChange={handleChange}
             required
-            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full border rounded px-3 py-2"
           >
             <option value="">Select Category</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat._id}>
-                {cat.name}
+            {categories.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
               </option>
             ))}
           </select>
 
-          {/* Show Min Stock */}
           {formData.category && (
-            <p className="mt-1 text-sm text-gray-700">
-              Minimum Stock for this category: <strong>{categoryMinStock}</strong>
+            <p className="text-sm mt-1">
+              Min Stock: <strong>{categoryMinStock}</strong>
             </p>
           )}
         </div>
 
         {/* Make */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Make</label>
+          <label>Make</label>
           <div className="flex gap-2">
             <select
               name="make"
               value={formData.make}
               onChange={handleChange}
-              className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="flex-1 border rounded px-3 py-2"
             >
               <option value="">Select Make</option>
-              {makes.map((m, i) => (
-                <option key={i} value={m}>
+              {makes.map((m) => (
+                <option key={m} value={m}>
                   {m}
                 </option>
               ))}
             </select>
+
             <input
               type="text"
               placeholder="New Make"
               value={newMake}
               onChange={(e) => setNewMake(e.target.value)}
-              className="border rounded-lg px-3 py-2 w-32 focus:ring-2 focus:ring-green-500"
+              className="border rounded px-3 py-2 w-32"
             />
+
             <button
               type="button"
               onClick={() => handleAddMakeOrModel("make")}
-              className="bg-green-500 text-white px-3 rounded-lg hover:bg-green-600"
+              className="bg-green-500 text-white px-3 rounded"
             >
               +
             </button>
@@ -281,32 +294,34 @@ export default function AddProduct() {
 
         {/* Model */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Model (Optional)</label>
+          <label>Model (optional)</label>
           <div className="flex gap-2">
             <select
               name="model"
               value={formData.model}
               onChange={handleChange}
-              className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="flex-1 border rounded px-3 py-2"
             >
               <option value="">Select Model</option>
-              {models.map((m, i) => (
-                <option key={i} value={m}>
+              {models.map((m) => (
+                <option key={m} value={m}>
                   {m}
                 </option>
               ))}
             </select>
+
             <input
               type="text"
               placeholder="New Model"
               value={newModel}
               onChange={(e) => setNewModel(e.target.value)}
-              className="border rounded-lg px-3 py-2 w-32 focus:ring-2 focus:ring-green-500"
+              className="border rounded px-3 py-2 w-32"
             />
+
             <button
               type="button"
               onClick={() => handleAddMakeOrModel("model")}
-              className="bg-green-500 text-white px-3 rounded-lg hover:bg-green-600"
+              className="bg-green-500 text-white px-3 rounded"
             >
               +
             </button>
@@ -315,86 +330,88 @@ export default function AddProduct() {
 
         {/* Quantity */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Quantity Received</label>
+          <label>Quantity Received</label>
           <input
             type="number"
             name="quantity"
             value={formData.quantity}
             onChange={handleChange}
-            className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
-              errors.quantity ? "border-red-500 focus:ring-red-400" : "focus:ring-blue-500"
+            className={`w-full border rounded px-3 py-2 ${
+              errors.quantity ? "border-red-500" : ""
             }`}
-            required
           />
           {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity}</p>}
         </div>
 
         {/* Cost */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Cost (with Tax)</label>
+          <label>Cost</label>
           <input
             type="number"
-            step="0.01"
             name="cost"
             value={formData.cost}
             onChange={handleChange}
-            className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
-              errors.cost ? "border-red-500 focus:ring-red-400" : "focus:ring-blue-500"
+            className={`w-full border rounded px-3 py-2 ${
+              errors.cost ? "border-red-500" : ""
             }`}
-            required
           />
           {errors.cost && <p className="text-red-500 text-sm">{errors.cost}</p>}
         </div>
 
         {/* Date of Receipt */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Date of Receipt</label>
+          <label>Date of Receipt</label>
           <input
             type="date"
             name="dateOfReceipt"
             value={formData.dateOfReceipt}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+            max={today}
+            className="w-full border rounded px-3 py-2"
             required
           />
+          {errors.receiptDate && <p className="text-red-500 text-sm">{errors.receiptDate}</p>}
         </div>
 
         {/* MIRV Date */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">MIRV Cleared Date</label>
+          <label>MIRV Date</label>
           <input
             type="date"
             name="mirvDate"
             value={formData.mirvDate}
             onChange={handleChange}
-            className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
-              errors.mirvDate ? "border-red-500 focus:ring-red-400" : "focus:ring-blue-500"
+            max={today}
+            className={`w-full border rounded px-3 py-2 ${
+              errors.mirvDate ? "border-red-500" : ""
             }`}
           />
           {errors.mirvDate && <p className="text-red-500 text-sm">{errors.mirvDate}</p>}
         </div>
 
-        {/* Product Updating Date */}
+        {/* Update Date */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Product Updating Date</label>
+          <label>Product Updating Date</label>
           <input
             type="date"
             name="productUpdatingDate"
             value={formData.productUpdatingDate}
             readOnly
-            className="w-full border rounded-lg px-3 py-2 bg-gray-100 text-gray-600"
+            className="w-full border rounded px-3 py-2 bg-gray-100"
           />
         </div>
 
+       
+      
         {/* Location */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Location</label>
+          <label>Location</label>
           <select
             name="location"
-            value={formData.location || selectedLocation}
+            value={formData.location}
             onChange={handleChange}
+            className="w-full border rounded px-3 py-2"
             required
-            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select Location</option>
             {locations.map((loc) => (
@@ -405,56 +422,32 @@ export default function AddProduct() {
           </select>
         </div>
 
-        {/* Add New Location */}
+        {/* Add new location */}
         <div>
-          <label className="block mb-1 font-medium text-gray-700">Add New Location</label>
+          <label>Add New Location</label>
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="New Location Name"
+              placeholder="New Location"
               value={newLocationName}
               onChange={(e) => setNewLocationName(e.target.value)}
-              className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500"
+              className="flex-1 border rounded px-3 py-2"
             />
             <button
               type="button"
               onClick={handleAddLocation}
-              className="bg-green-500 text-white px-4 rounded-lg hover:bg-green-600"
+              className="bg-green-500 text-white px-4 rounded"
             >
-              ➕ Add
+              Add
             </button>
           </div>
         </div>
 
-        {/* Serial Number */}
-        <div>
-          <label className="block mb-1 font-medium text-gray-700">Serial Number</label>
-          <input
-            type="text"
-            name="serialNumber"
-            value={formData.serialNumber}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* PO */}
-        <div>
-          <label className="block mb-1 font-medium text-gray-700">Indent / PO</label>
-          <input
-            type="text"
-            name="po"
-            value={formData.po}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Submit */}
-        <div className="md:col-span-2">
+        {/* Submit button */}
+        <div className="col-span-2">
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
           >
             ➕ Add Product
           </button>
@@ -463,3 +456,5 @@ export default function AddProduct() {
     </div>
   );
 }
+
+
