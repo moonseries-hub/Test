@@ -1,19 +1,30 @@
-// src/pages/InventoryReports.jsx
-import React, { useEffect, useState } from "react";
+
+// src/pages/ReportPage.jsx
+import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 const API_PRODUCTS = "http://localhost:5000/api/products";
+const API_PO = "http://localhost:5000/api/po";
 
-export default function InventoryReports() {
+export default function ReportPage() {
   const [products, setProducts] = useState([]);
+  const [poData, setPoData] = useState([]);
   const [activeTab, setActiveTab] = useState("stock");
-  const [filters, setFilters] = useState({ product: "", location: "", staff: "", startDate: "", endDate: "" });
+  const [filters, setFilters] = useState({
+    product: "",
+    location: "",
+    staff: "",
+    startDate: "",
+    endDate: "",
+    poStatus: "all",
+  });
 
   useEffect(() => {
     fetchProducts();
+    fetchPOData();
   }, []);
 
   const fetchProducts = async () => {
@@ -25,21 +36,86 @@ export default function InventoryReports() {
     }
   };
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+  const fetchPOData = async () => {
+    try {
+      const res = await axios.get(API_PO);
+      setPoData(res.data);
+    } catch (err) {
+      console.error("Error fetching PO data:", err);
+    }
   };
 
-  /*** Data Processing ***/
-  const stockRecords = products.map(p => {
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      product: "",
+      location: "",
+      staff: "",
+      startDate: "",
+      endDate: "",
+      poStatus: "all",
+    });
+  };
+
+  const filterByDateRange = (recordDate) => {
+    if (!recordDate) return true;
+    const startDate = filters.startDate ? new Date(filters.startDate) : null;
+    const endDate = filters.endDate ? new Date(filters.endDate) : null;
+    const date = new Date(recordDate);
+    if (startDate && date < startDate) return false;
+    if (endDate && date > endDate) return false;
+    return true;
+  };
+
+  /*** PO History Records ***/
+  const poHistoryRecords = useMemo(() => {
+    return products
+      .filter((p) => poData.some((po) => po.productName === p.productName))
+      .map((p) => {
+        const poRecord = poData.find((po) => po.productName === p.productName);
+        return {
+          productName: p.productName || "-",
+          category: p.category?.name || "-",
+          make: p.make || "-",
+          model: p.model || "-",
+          expectedDate: poRecord?.expectedDate
+            ? new Date(poRecord.expectedDate).toLocaleDateString()
+            : "-",
+          productUpdatingDate: poRecord?.productUpdatingDate
+            ? new Date(poRecord.productUpdatingDate).toLocaleDateString()
+            : "-",
+          cleared: poRecord?.isConsumed ? "Cleared" : "Not Cleared",
+        };
+      });
+  }, [products, poData]);
+
+  const filteredPOHistory = poHistoryRecords.filter(
+    (r) =>
+      (!filters.product ||
+        r.productName.toLowerCase().includes(filters.product.toLowerCase())) &&
+      filterByDateRange(r.productUpdatingDate) &&
+      (filters.poStatus === "all"
+        ? true
+        : filters.poStatus === "cleared"
+        ? r.cleared === "Cleared"
+        : r.cleared === "Not Cleared")
+  );
+
+  /*** Stock Records ***/
+  const stockRecords = products.map((p) => {
     const totalInstock = p.instock || 0;
     const openingStock = p.openingStock || 0;
-    const consumed = p.consumed || 0;
+    const consumed =
+      p.consumptionRecords?.reduce((a, c) => a + (c.quantity || 0), 0) || 0;
     const newStock = totalInstock - openingStock;
     const availableStock = totalInstock - consumed;
 
     return {
-      date: p.createdAt ? new Date(p.createdAt) : new Date(),
+      date: p.createdAt || new Date(),
       productName: p.productName || "-",
       makeModel: p.make ? `${p.make} ${p.model || ""}` : p.model || "-",
       category: p.category?.name || "-",
@@ -53,66 +129,36 @@ export default function InventoryReports() {
     };
   });
 
-  const consumedRecords = products.flatMap(p =>
+  const filteredStock = stockRecords.filter(
+    (r) =>
+      (!filters.product ||
+        r.productName.toLowerCase().includes(filters.product.toLowerCase())) &&
+      (!filters.location ||
+        r.location.toLowerCase().includes(filters.location.toLowerCase())) &&
+      filterByDateRange(r.date)
+  );
+
+  /*** Consumed Records ***/
+  const consumedRecords = products.flatMap((p) =>
     (p.consumptionRecords || []).map((r, idx) => ({
       date: r.date || new Date(),
       productName: p.productName || "-",
       makeModel: p.make ? `${p.make} ${p.model || ""}` : p.model || "-",
       quantity: r.quantity || 0,
-      cost: p.cost || 0,
       consumedAt: r.usedAtLocation?.name || "-",
       consumedBy: r.consumedByName || "-",
       purpose: r.remarks || "-",
-      serialNo: idx + 1,
     }))
   );
 
-  const receivedRecords = products.flatMap(p =>
-    (p.receivedRecords || []).map((r, idx) => ({
-      date: r.date || new Date(),
-      productName: p.productName || "-",
-      makeModel: p.make ? `${p.make} ${p.model || ""}` : p.model || "-",
-      cost: r.cost || p.cost || 0,
-      quantity: r.quantity || 0,
-      receivedDetails: r.receivedDetails || [],
-      stockPage: r.stockPage || "-",
-      serialNo: idx + 1,
-    }))
+  const filteredConsumed = consumedRecords.filter(
+    (r) =>
+      (!filters.product ||
+        r.productName.toLowerCase().includes(filters.product.toLowerCase())) &&
+      (!filters.staff ||
+        r.consumedBy.toLowerCase().includes(filters.staff.toLowerCase())) &&
+      filterByDateRange(r.date)
   );
-
-  /*** Filter Functions ***/
-  const filterByDateRange = (record) => {
-    const recordDate = new Date(record.date);
-    const startDate = filters.startDate ? new Date(filters.startDate) : null;
-    const endDate = filters.endDate ? new Date(filters.endDate) : null;
-    if (startDate && recordDate < startDate) return false;
-    if (endDate && recordDate > endDate) return false;
-    return true;
-  };
-
-  const filteredStock = stockRecords.filter(r => 
-    (!filters.product || r.productName.toLowerCase().includes(filters.product.toLowerCase())) &&
-    (!filters.location || r.location.toLowerCase().includes(filters.location.toLowerCase())) &&
-    filterByDateRange(r)
-  );
-
-  const filteredConsumed = consumedRecords.filter(r =>
-    (!filters.product || r.productName.toLowerCase().includes(filters.product.toLowerCase())) &&
-    (!filters.staff || r.consumedBy.toLowerCase().includes(filters.staff.toLowerCase())) &&
-    filterByDateRange(r)
-  );
-
-  const filteredReceived = receivedRecords.filter(r =>
-    (!filters.product || r.productName.toLowerCase().includes(filters.product.toLowerCase())) &&
-    filterByDateRange(r)
-  );
-
-  /*** Tabs ***/
-  const tabs = [
-    { id: "stock", label: "Inventory Stock" },
-    { id: "consumed", label: "Consumed Report" },
-    { id: "received", label: "Received Report" },
-  ];
 
   /*** Export Functions ***/
   const exportToExcel = (data, fileName) => {
@@ -126,39 +172,85 @@ export default function InventoryReports() {
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text(title, 14, 15);
-    doc.autoTable({
+
+    autoTable(doc, {
       startY: 20,
       head: [columns],
-      body: data.map(row => columns.map(col => row[col] ?? "-")),
+      body: data.map((row) => columns.map((col) => row[col] ?? "-")),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [100, 100, 255] },
       theme: "grid",
     });
+
     doc.save(`${title}.pdf`);
   };
 
-  /*** Table Renderings ***/
+  /*** Render Tables ***/
   const renderStockTable = () => (
     <div>
       <div className="flex gap-2 mb-2">
-        <button onClick={() => exportToExcel(filteredStock, "Inventory_Stock")} className="bg-green-600 text-white px-3 py-1 rounded">Export Excel</button>
-        <button onClick={() => exportToPDF(
-          ["Date","Product","Make/Model No","Category","Location","Opening Stock","Consumed","New Stock","Available Stock","Quantity in Operation","Minimum Stock","Qty to be Indented"],
-          filteredStock.map(r => ({
-            Date: new Date(r.date).toLocaleDateString(),
-            Product: r.productName,
-            "Make/Model No": r.makeModel,
-            Category: r.category,
-            Location: r.location,
-            "Opening Stock": r.openingStock,
-            Consumed: r.consumed,
-            "New Stock": r.newStock,
-            "Available Stock": r.availableStock,
-            "Quantity in Operation": r.inOperation,
-            "Minimum Stock": r.minStock,
-            "Qty to be Indented": Math.max(0, r.minStock - r.availableStock)
-          })), "Inventory Stock")} 
-          className="bg-blue-600 text-white px-3 py-1 rounded">Export PDF</button>
+        <button
+          onClick={() =>
+            exportToExcel(
+              filteredStock.map((r) => ({
+                Date: new Date(r.date).toLocaleDateString(),
+                Product: r.productName,
+                "Make/Model": r.makeModel,
+                Category: r.category,
+                Location: r.location,
+                "Opening Stock": r.openingStock,
+                Consumed: r.consumed,
+                "New Stock": r.newStock,
+                "Available Stock": r.availableStock,
+                "Quantity in Operation": r.inOperation,
+                "Minimum Stock": r.minStock,
+                "Qty to be Indented": Math.max(0, r.minStock - r.availableStock),
+              })),
+              "Inventory_Stock"
+            )
+          }
+          className="bg-green-600 text-white px-3 py-1 rounded"
+        >
+          Export Excel
+        </button>
+        <button
+          onClick={() =>
+            exportToPDF(
+              [
+                "Date",
+                "Product",
+                "Make/Model",
+                "Category",
+                "Location",
+                "Opening Stock",
+                "Consumed",
+                "New Stock",
+                "Available Stock",
+                "Quantity in Operation",
+                "Minimum Stock",
+                "Qty to be Indented",
+              ],
+              filteredStock.map((r) => ({
+                Date: new Date(r.date).toLocaleDateString(),
+                Product: r.productName,
+                "Make/Model": r.makeModel,
+                Category: r.category,
+                Location: r.location,
+                "Opening Stock": r.openingStock,
+                Consumed: r.consumed,
+                "New Stock": r.newStock,
+                "Available Stock": r.availableStock,
+                "Quantity in Operation": r.inOperation,
+                "Minimum Stock": r.minStock,
+                "Qty to be Indented": Math.max(0, r.minStock - r.availableStock),
+              })),
+              "Inventory Stock"
+            )
+          }
+          className="bg-blue-600 text-white px-3 py-1 rounded"
+        >
+          Export PDF
+        </button>
       </div>
 
       <table className="w-full border-collapse border text-sm">
@@ -166,7 +258,7 @@ export default function InventoryReports() {
           <tr>
             <th className="border px-2 py-1">Date</th>
             <th className="border px-2 py-1">Product</th>
-            <th className="border px-2 py-1">Make/Model No</th>
+            <th className="border px-2 py-1">Make/Model</th>
             <th className="border px-2 py-1">Category</th>
             <th className="border px-2 py-1">Location</th>
             <th className="border px-2 py-1">Opening Stock</th>
@@ -181,7 +273,9 @@ export default function InventoryReports() {
         <tbody>
           {filteredStock.map((r, idx) => (
             <tr key={idx} className="text-center hover:bg-gray-50">
-              <td className="border px-2 py-1">{new Date(r.date).toLocaleDateString()}</td>
+              <td className="border px-2 py-1">
+                {new Date(r.date).toLocaleDateString()}
+              </td>
               <td className="border px-2 py-1">{r.productName}</td>
               <td className="border px-2 py-1">{r.makeModel}</td>
               <td className="border px-2 py-1">{r.category}</td>
@@ -192,7 +286,9 @@ export default function InventoryReports() {
               <td className="border px-2 py-1">{r.availableStock}</td>
               <td className="border px-2 py-1">{r.inOperation}</td>
               <td className="border px-2 py-1">{r.minStock}</td>
-              <td className="border px-2 py-1">{Math.max(0, r.minStock - r.availableStock)}</td>
+              <td className="border px-2 py-1">
+                {Math.max(0, r.minStock - r.availableStock)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -203,70 +299,21 @@ export default function InventoryReports() {
   const renderConsumedTable = () => (
     <div>
       <div className="flex gap-2 mb-2">
-        <button onClick={() => exportToExcel(filteredConsumed, "Consumed_Report")} className="bg-green-600 text-white px-3 py-1 rounded">Export Excel</button>
-        <button onClick={() => exportToPDF(
-          ["Date","Total Item Consumed","Total Cost","Cost of Each Item","Item Description","Make/Model No","Consumed at","Consumed By","Consumed Date","Purpose","S.No"],
-          filteredConsumed.map(r => ({
-            Date: new Date(r.date).toLocaleDateString(),
-            "Total Item Consumed": r.quantity,
-            "Total Cost": r.cost,
-            "Cost of Each Item": r.quantity ? (r.cost / r.quantity).toFixed(2) : 0,
-            "Item Description": r.productName,
-            "Make/Model No": r.makeModel,
-            "Consumed at": r.consumedAt,
-            "Consumed By": r.consumedBy,
-            "Consumed Date": new Date(r.date).toLocaleDateString(),
-            Purpose: r.purpose,
-            "S.No": r.serialNo
-          })), "Consumed Report")}
-          className="bg-blue-600 text-white px-3 py-1 rounded">Export PDF</button>
-      </div>
-
-      <table className="w-full border-collapse border text-sm">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border px-2 py-1">Date</th>
-            <th className="border px-2 py-1">Total Item Consumed</th>
-            <th className="border px-2 py-1">Total Cost</th>
-            <th className="border px-2 py-1">Cost of Each Item</th>
-            <th className="border px-2 py-1">Item Description</th>
-            <th className="border px-2 py-1">Make/Model No</th>
-            <th className="border px-2 py-1">Consumed at</th>
-            <th className="border px-2 py-1">Consumed By</th>
-            <th className="border px-2 py-1">Consumed Date</th>
-            <th className="border px-2 py-1">Purpose</th>
-            <th className="border px-2 py-1">S.No</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredConsumed.map((r, idx) => {
-            const costPerItem = r.quantity ? r.cost / r.quantity : 0;
-            return (
-              <tr key={idx} className="text-center hover:bg-gray-50">
-                <td className="border px-2 py-1">{new Date(r.date).toLocaleDateString()}</td>
-                <td className="border px-2 py-1">{r.quantity}</td>
-                <td className="border px-2 py-1">₹ {r.cost.toLocaleString()}</td>
-                <td className="border px-2 py-1">₹ {costPerItem.toFixed(2)}</td>
-                <td className="border px-2 py-1">{r.productName}</td>
-                <td className="border px-2 py-1">{r.makeModel}</td>
-                <td className="border px-2 py-1">{r.consumedAt}</td>
-                <td className="border px-2 py-1">{r.consumedBy}</td>
-                <td className="border px-2 py-1">{new Date(r.date).toLocaleDateString()}</td>
-                <td className="border px-2 py-1">{r.purpose}</td>
-                <td className="border px-2 py-1">{r.serialNo}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  const renderReceivedTable = () => (
-    <div>
-      <div className="flex gap-2 mb-2">
         <button
-          onClick={() => exportToExcel(filteredReceived, "Received_Report")}
+          onClick={() =>
+            exportToExcel(
+              filteredConsumed.map((r) => ({
+                "Consumed Date": new Date(r.date).toLocaleDateString(),
+                Product: r.productName,
+                "Make/Model": r.makeModel,
+                Quantity: r.quantity,
+                "Consumed At": r.consumedAt,
+                "Consumed By": r.consumedBy,
+                Purpose: r.purpose,
+              })),
+              "Consumed_Products"
+            )
+          }
           className="bg-green-600 text-white px-3 py-1 rounded"
         >
           Export Excel
@@ -275,30 +322,24 @@ export default function InventoryReports() {
           onClick={() =>
             exportToPDF(
               [
-                "Date",
-                "Total Item Received",
-                "Total Cost",
-                "Cost of Each Item",
-                "Item Description",
-                "Make/Model No",
-                "Stock Page",
-                "Received Details",
+                "Consumed Date",
+                "Product",
+                "Make/Model",
+                "Quantity",
+                "Consumed At",
+                "Consumed By",
+                "Purpose",
               ],
-              filteredReceived.map((r) => ({
-                Date: new Date(r.date).toLocaleDateString(),
-                "Total Item Received": r.quantity,
-                "Total Cost": r.cost,
-                "Cost of Each Item": r.quantity ? (r.cost / r.quantity).toFixed(2) : 0,
-                "Item Description": r.productName,
-                "Make/Model No": r.makeModel,
-                "Stock Page": r.stockPage || "-",
-                "Received Details": r.receivedDetails.length
-                  ? r.receivedDetails.map(rd =>
-                      `MIRV Cleared on: ${rd.clearedDate || "-"}, Indentor: ${rd.indentor || "-"}, Purpose: ${rd.purpose || "-"}`
-                    ).join(" | ")
-                  : "-",
+              filteredConsumed.map((r) => ({
+                "Consumed Date": new Date(r.date).toLocaleDateString(),
+                Product: r.productName,
+                "Make/Model": r.makeModel,
+                Quantity: r.quantity,
+                "Consumed At": r.consumedAt,
+                "Consumed By": r.consumedBy,
+                Purpose: r.purpose,
               })),
-              "Received Report"
+              "Consumed Report"
             )
           }
           className="bg-blue-600 text-white px-3 py-1 rounded"
@@ -310,80 +351,215 @@ export default function InventoryReports() {
       <table className="w-full border-collapse border text-sm">
         <thead className="bg-gray-100">
           <tr>
-            <th className="border px-2 py-1">Date</th>
-            <th className="border px-2 py-1">Total Item Received</th>
-            <th className="border px-2 py-1">Total Cost</th>
-            <th className="border px-2 py-1">Cost of Each Item</th>
-            <th className="border px-2 py-1">Item Description</th>
-            <th className="border px-2 py-1">Make/Model No</th>
-            <th className="border px-2 py-1">Stock Page</th>
-            <th className="border px-2 py-1">Received Details</th>
+            <th className="border px-2 py-1">Consumed Date</th>
+            <th className="border px-2 py-1">Product</th>
+            <th className="border px-2 py-1">Make/Model</th>
+            <th className="border px-2 py-1">Quantity</th>
+            <th className="border px-2 py-1">Consumed At</th>
+            <th className="border px-2 py-1">Consumed By</th>
+            <th className="border px-2 py-1">Purpose</th>
           </tr>
         </thead>
         <tbody>
-          {filteredReceived.map((r, idx) => {
-            const costPerItem = r.quantity ? r.cost / r.quantity : 0;
-            return (
-              <tr key={idx} className="text-center hover:bg-gray-50 align-top">
-                <td className="border px-2 py-1">{new Date(r.date).toLocaleDateString()}</td>
-                <td className="border px-2 py-1">{r.quantity}</td>
-                <td className="border px-2 py-1">₹ {r.cost.toLocaleString()}</td>
-                <td className="border px-2 py-1">₹ {costPerItem.toFixed(2)}</td>
-                <td className="border px-2 py-1">{r.productName}</td>
-                <td className="border px-2 py-1">{r.makeModel}</td>
-                <td className="border px-2 py-1">{r.stockPage || "-"}</td>
-                <td className="border px-2 py-1 text-left">
-                  {r.receivedDetails.length
-                    ? r.receivedDetails.map((rec, i) => (
-                        <div key={i} className="mb-1 border-b border-gray-200 pb-1 text-xs">
-                          <div>MIRV Cleared on: {rec.clearedDate || "-"}</div>
-                          <div>Indentor: {rec.indentor || "-"}</div>
-                          <div>Purpose: {rec.purpose || "-"}</div>
-                        </div>
-                      ))
-                    : "-"}
-                </td>
-              </tr>
-            );
-          })}
+          {filteredConsumed.map((r, idx) => (
+            <tr key={idx} className="text-center hover:bg-gray-50">
+              <td className="border px-2 py-1">
+                {new Date(r.date).toLocaleDateString()}
+              </td>
+              <td className="border px-2 py-1">{r.productName}</td>
+              <td className="border px-2 py-1">{r.makeModel}</td>
+              <td className="border px-2 py-1">{r.quantity}</td>
+              <td className="border px-2 py-1">{r.consumedAt}</td>
+              <td className="border px-2 py-1">{r.consumedBy}</td>
+              <td className="border px-2 py-1">{r.purpose}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
   );
 
-  /*** Render Component ***/
+  const renderPOHistoryTable = () => (
+    <div>
+      <div className="flex gap-2 mb-2">
+        <button
+          onClick={() =>
+            exportToExcel(
+              filteredPOHistory.map((r) => ({
+                Product: r.productName,
+                Category: r.category,
+                Make: r.make,
+                Model: r.model,
+                "Expected Date": r.expectedDate,
+                "Updated Date": r.productUpdatingDate,
+                "Cleared/Not": r.cleared,
+              })),
+              "PO_History"
+            )
+          }
+          className="bg-green-600 text-white px-3 py-1 rounded"
+        >
+          Export Excel
+        </button>
+        <button
+          onClick={() =>
+            exportToPDF(
+              [
+                "Product",
+                "Category",
+                "Make",
+                "Model",
+                "Expected Date",
+                "Updated Date",
+                "Cleared/Not",
+              ],
+              filteredPOHistory.map((r) => ({
+                Product: r.productName,
+                Category: r.category,
+                Make: r.make,
+                Model: r.model,
+                "Expected Date": r.expectedDate,
+                "Updated Date": r.productUpdatingDate,
+                "Cleared/Not": r.cleared,
+              })),
+              "PO History"
+            )
+          }
+          className="bg-blue-600 text-white px-3 py-1 rounded"
+        >
+          Export PDF
+        </button>
+      </div>
+
+      <table className="w-full border-collapse border text-sm">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-2 py-1">Product</th>
+            <th className="border px-2 py-1">Category</th>
+            <th className="border px-2 py-1">Make</th>
+            <th className="border px-2 py-1">Model</th>
+            <th className="border px-2 py-1">Expected Date</th>
+            <th className="border px-2 py-1">Updated Date</th>
+            <th className="border px-2 py-1">Cleared/Not</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredPOHistory.map((r, idx) => (
+            <tr key={idx} className="text-center hover:bg-gray-50">
+              <td className="border px-2 py-1">{r.productName}</td>
+              <td className="border px-2 py-1">{r.category}</td>
+              <td className="border px-2 py-1">{r.make}</td>
+              <td className="border px-2 py-1">{r.model}</td>
+              <td className="border px-2 py-1">{r.expectedDate}</td>
+              <td className="border px-2 py-1">{r.productUpdatingDate}</td>
+              <td className="border px-2 py-1">{r.cleared}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <div className="p-6 min-h-screen bg-gray-100">
-      <h1 className="text-3xl font-bold mb-6 text-center text-blue-700">Inventory Reports Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center text-blue-700">
+        Inventory Reports Dashboard
+      </h1>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-4 justify-center">
-        {tabs.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded ${activeTab === tab.id ? "bg-blue-700 text-white" : "bg-gray-200 text-gray-700"}`}>
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex gap-2 mb-4 justify-center flex-wrap">
+        <button
+          onClick={() => setActiveTab("stock")}
+          className={`px-4 py-2 rounded ${
+            activeTab === "stock"
+              ? "bg-blue-700 text-white"
+              : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          Inventory Stock
+        </button>
+        <button
+          onClick={() => setActiveTab("consumed")}
+          className={`px-4 py-2 rounded ${
+            activeTab === "consumed"
+              ? "bg-blue-700 text-white"
+              : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          Consumed Report
+        </button>
+        <button
+          onClick={() => setActiveTab("pohistory")}
+          className={`px-4 py-2 rounded ${
+            activeTab === "pohistory"
+              ? "bg-blue-700 text-white"
+              : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          PO in Pipeline Report
+        </button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-4 justify-center">
-        {activeTab === "consumed" && (
-          <input name="staff" placeholder="Staff" value={filters.staff} onChange={handleFilterChange} className="p-2 border rounded w-40" />
+      <div className="flex flex-wrap gap-2 mb-4 justify-center items-center">
+        <input
+          name="product"
+          placeholder="Product"
+          value={filters.product}
+          onChange={handleFilterChange}
+          className="p-2 border rounded w-40"
+        />
+        <input
+          name="location"
+          placeholder="Location"
+          value={filters.location}
+          onChange={handleFilterChange}
+          className="p-2 border rounded w-40"
+        />
+        <input
+          name="staff"
+          placeholder="Staff"
+          value={filters.staff}
+          onChange={handleFilterChange}
+          className="p-2 border rounded w-40"
+        />
+        <input
+          name="startDate"
+          type="date"
+          value={filters.startDate}
+          onChange={handleFilterChange}
+          className="p-2 border rounded w-40"
+        />
+        <input
+          name="endDate"
+          type="date"
+          value={filters.endDate}
+          onChange={handleFilterChange}
+          className="p-2 border rounded w-40"
+        />
+        {activeTab === "pohistory" && (
+          <select
+            name="poStatus"
+            value={filters.poStatus}
+            onChange={handleFilterChange}
+            className="p-2 border rounded w-40"
+          >
+            <option value="all">All</option>
+            <option value="cleared">Cleared</option>
+            <option value="notCleared">Not Cleared</option>
+          </select>
         )}
-        <input name="product" placeholder="Product" value={filters.product} onChange={handleFilterChange} className="p-2 border rounded w-40" />
-        {activeTab !== "stock" && (
-          <input name="location" placeholder="Location" value={filters.location} onChange={handleFilterChange} className="p-2 border rounded w-40" />
-        )}
-        <input name="startDate" type="date" value={filters.startDate} onChange={handleFilterChange} className="p-2 border rounded w-40" />
-        <input name="endDate" type="date" value={filters.endDate} onChange={handleFilterChange} className="p-2 border rounded w-40" />
+        <button
+          onClick={clearFilters}
+          className="px-4 py-2 bg-red-500 text-white rounded"
+        >
+          Clear Filters
+        </button>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto bg-white rounded-xl shadow-lg p-4">
         {activeTab === "stock" && renderStockTable()}
         {activeTab === "consumed" && renderConsumedTable()}
-        {activeTab === "received" && renderReceivedTable()}
+        {activeTab === "pohistory" && renderPOHistoryTable()}
       </div>
     </div>
   );

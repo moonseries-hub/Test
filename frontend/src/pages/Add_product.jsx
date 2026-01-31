@@ -1,3 +1,5 @@
+
+// src/pages/AddProduct.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -6,6 +8,7 @@ const API_URL = "http://localhost:5000/api";
 export default function AddProduct() {
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [poList, setPoList] = useState([]);
   const [newLocationName, setNewLocationName] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [makes, setMakes] = useState([]);
@@ -15,13 +18,7 @@ export default function AddProduct() {
   const [newMake, setNewMake] = useState("");
   const [newModel, setNewModel] = useState("");
 
-  const today = new Date().toISOString().split("T")[0];
-
-  const [errors, setErrors] = useState({
-    quantity: "",
-    cost: "",
-    mirvDate: "",
-  });
+  const [errors, setErrors] = useState({ quantity: "", cost: "", mirvDate: "" });
 
   const [formData, setFormData] = useState({
     productName: "",
@@ -35,125 +32,131 @@ export default function AddProduct() {
     cost: "",
     po: "",
     mirvDate: "",
-    productUpdatingDate: today,
+    productUpdatingDate: new Date().toISOString().split("T")[0],
   });
 
-  // Fetch categories & locations
+  // Fetch categories, locations, and PO
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [catRes, locRes] = await Promise.all([
+        const [catRes, locRes, poRes] = await Promise.all([
           axios.get(`${API_URL}/categories`),
           axios.get(`${API_URL}/locations`),
+          axios.get(`${API_URL}/po`),
         ]);
         setCategories(catRes.data);
         setLocations(locRes.data);
+        setPoList(poRes.data.filter((po) => !po.isConsumed));
       } catch (err) {
-        console.error("Error fetching data:", err);
+        console.error("Error fetching data:", err.response?.data || err.message);
       }
     };
     fetchData();
   }, []);
 
-  // Handle all field changes
+  // Handle form changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    // QUANTITY VALIDATION
+    // Validations
     if (name === "quantity") {
-      if (value <= 0) {
-        setErrors((prev) => ({ ...prev, quantity: "❌ Quantity must be > 0" }));
-      } else if (value < categoryMinStock) {
-        setErrors((prev) => ({
-          ...prev,
-          quantity: `⚠️ Quantity below category minimum stock (${categoryMinStock})`,
-        }));
-      } else {
-        setErrors((prev) => ({ ...prev, quantity: "" }));
-      }
+      if (value <= 0)
+        setErrors((prev) => ({ ...prev, quantity: "❌ Quantity must be greater than 0" }));
+      
+      else setErrors((prev) => ({ ...prev, quantity: "" }));
     }
 
-    // COST VALIDATION
     if (name === "cost") {
-      if (value <= 0) {
-        setErrors((prev) => ({ ...prev, cost: "❌ Cost must be > 0" }));
-      } else setErrors((prev) => ({ ...prev, cost: "" }));
+      if (value <= 0) setErrors((prev) => ({ ...prev, cost: "❌ Cost must be greater than 0" }));
+      else setErrors((prev) => ({ ...prev, cost: "" }));
     }
 
-    // DATE VALIDATIONS
-    const receipt = name === "dateOfReceipt" ? value : formData.dateOfReceipt;
-    const mirv = name === "mirvDate" ? value : formData.mirvDate;
-
-    // Receipt Date cannot be in future
-    if (name === "dateOfReceipt" && value > today) {
-      setErrors((prev) => ({
-        ...prev,
-        mirvDate: "",
-        receiptDate: "❌ Date of Receipt cannot be in the future",
-      }));
-    } else {
-      setErrors((prev) => ({ ...prev, receiptDate: "" }));
+    if (name === "mirvDate" || name === "dateOfReceipt") {
+      const receipt = name === "dateOfReceipt" ? value : formData.dateOfReceipt;
+      const mirv = name === "mirvDate" ? value : formData.mirvDate;
+      if (receipt && mirv && new Date(mirv) < new Date(receipt)) {
+        setErrors((prev) => ({ ...prev, mirvDate: "❌ MIRV Date must be after Date of Receipt" }));
+      } else setErrors((prev) => ({ ...prev, mirvDate: "" }));
     }
 
-    // MIRV validation: must be after receipt + not in future
-    if (receipt && mirv) {
-      if (new Date(mirv) < new Date(receipt)) {
-        setErrors((prev) => ({
-          ...prev,
-          mirvDate: "❌ MIRV Date must be AFTER Date of Receipt",
-        }));
-      } else if (mirv > today) {
-        setErrors((prev) => ({
-          ...prev,
-          mirvDate: "❌ MIRV Date cannot be in the future",
-        }));
-      } else {
-        setErrors((prev) => ({ ...prev, mirvDate: "" }));
-      }
-    }
-
-    // On category change update makes/models
+    // Category-dependent fields
     if (name === "category") {
-      const selected = categories.find((c) => c._id === value);
-      if (selected) {
-        setMakes(selected.makes || []);
-        setModels(selected.models || []);
-        setCategoryMinStock(selected.minStock || 0);
+      const selectedCat = categories.find((c) => c._id === value);
+      if (selectedCat) {
+        setMakes(selectedCat.makes || []);
+        setModels(selectedCat.models || []);
+        setCategoryMinStock(selectedCat.minStock || 0);
         setFormData((prev) => ({ ...prev, make: "", model: "" }));
+      } else {
+        setMakes([]);
+        setModels([]);
+        setCategoryMinStock(0);
       }
     }
   };
 
-  // Add new location
+  // Handle PO selection
+  const handlePoSelect = (e) => {
+    const poId = e.target.value;
+    if (!poId) return;
+
+    const selectedPo = poList.find((po) => po._id === poId);
+    if (!selectedPo) return;
+
+    // Auto-fill product details from PO
+    setFormData((prev) => ({
+      ...prev,
+      po: poId,
+      productName: selectedPo.productName || "",
+      category: selectedPo.category || "",
+      make: selectedPo.make || "",
+      model: selectedPo.model || "",
+      dateOfReceipt: selectedPo.expectedDate
+        ? new Date(selectedPo.expectedDate).toISOString().split("T")[0]
+        : "",
+      quantity: selectedPo.quantity || "",
+      cost: selectedPo.cost || "",
+    }));
+
+    // Update makes/models arrays based on selected category
+    const selectedCat = categories.find((c) => c._id === selectedPo.category);
+    if (selectedCat) {
+      setMakes(selectedCat.makes || []);
+      setModels(selectedCat.models || []);
+      setCategoryMinStock(selectedCat.minStock || 0);
+    } else {
+      setMakes([]);
+      setModels([]);
+      setCategoryMinStock(0);
+    }
+  };
+
+  // Add Location
   const handleAddLocation = async () => {
     if (!newLocationName.trim()) return alert("Enter location name");
     try {
-      const res = await axios.post(`${API_URL}/locations`, {
-        name: newLocationName.trim(),
-      });
+      const res = await axios.post(`${API_URL}/locations`, { name: newLocationName.trim() });
       setLocations([...locations, res.data]);
+      setSelectedLocation(res.data._id);
       setFormData((prev) => ({ ...prev, location: res.data._id }));
       setNewLocationName("");
-      alert("✅ Location added");
+      alert("✅ Location added!");
     } catch (err) {
+      console.error("Error adding location:", err);
       alert("❌ Failed to add location");
     }
   };
 
-  // Add Make / Model
+  // Add Make or Model
   const handleAddMakeOrModel = async (type) => {
-    if (!formData.category) return alert("Select category first!");
-
+    if (!formData.category) return alert("Select a category first!");
     const value = type === "make" ? newMake.trim() : newModel.trim();
-    if (!value) return alert(`Enter new ${type}`);
+    if (!value) return alert(`Enter new ${type} name`);
 
     try {
-      await axios.patch(`${API_URL}/categories/${formData.category}/add-${type}`, {
-        [type]: value,
-      });
-
+      await axios.patch(`${API_URL}/categories/${formData.category}/add-${type}`, { [type]: value });
+      alert(`✅ ${type} added successfully!`);
       if (type === "make") {
         setMakes((prev) => [...prev, value]);
         setNewMake("");
@@ -161,29 +164,31 @@ export default function AddProduct() {
         setModels((prev) => [...prev, value]);
         setNewModel("");
       }
-
-      alert(`✅ ${type} added`);
     } catch (err) {
+      console.error(`Error adding ${type}:`, err);
       alert(`❌ Failed to add ${type}`);
     }
   };
 
-  // Submit product
+  // Submit Product
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (errors.quantity || errors.cost || errors.mirvDate || errors.receiptDate) {
-      alert("❌ Fix all errors before submitting.");
+    if (errors.quantity || errors.cost || errors.mirvDate) {
+      alert("⚠️ Fix all validation errors before submitting.");
       return;
     }
 
-    if (!formData.productName || !formData.category || !formData.make || !formData.location) {
-      alert("❌ Fill all required fields.");
-      return;
-    }
+    if (!formData.productName.trim() || !formData.category || !formData.make || !formData.location)
+      return alert("Product Name, Category, Make, and Location are required.");
 
     try {
       await axios.post(`${API_URL}/products`, formData);
+
+      // Mark PO as consumed
+      if (formData.po) {
+        await axios.patch(`${API_URL}/po/${formData.po}/consume`);
+      }
 
       alert("✅ Product added successfully!");
 
@@ -200,92 +205,112 @@ export default function AddProduct() {
         cost: "",
         po: "",
         mirvDate: "",
-        productUpdatingDate: today,
+        productUpdatingDate: new Date().toISOString().split("T")[0],
       });
+      setSelectedLocation("");
       setMakes([]);
       setModels([]);
+      setCategoryMinStock(0);
+
+      // Refresh PO list
+      const poRes = await axios.get(`${API_URL}/po`);
+      setPoList(poRes.data.filter((po) => !po.isConsumed));
     } catch (err) {
-      console.error(err);
+      console.error("Error adding product:", err);
       alert("❌ Failed to add product.");
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto bg-white p-8 rounded-2xl shadow-lg mt-8">
-      <h2 className="text-3xl font-bold mb-6 text-blue-900 text-center border-b pb-3">
+      <h2 className="text-3xl font-bold mb-6 text-blue-900 border-b pb-3 text-center">
         Add New Product
       </h2>
 
       <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleSubmit}>
-        
+        {/* PO Selection */}
+        <div className="md:col-span-2">
+          <label className="block mb-1 font-medium text-gray-700">Select from PO (optional)</label>
+          <select
+            name="po"
+            value={formData.po}
+            onChange={handlePoSelect}
+            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select PO</option>
+            {poList.map((po) => (
+              <option key={po._id} value={po._id}>
+                {po.poNumber || po.productName} - Qty: {po.quantity}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Product Name */}
         <div>
-          <label>Product Name</label>
+          <label className="block mb-1 font-medium text-gray-700">Product Name</label>
           <input
             type="text"
             name="productName"
             value={formData.productName}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             required
           />
         </div>
 
         {/* Category */}
         <div>
-          <label>Category</label>
+          <label className="block mb-1 font-medium text-gray-700">Category</label>
           <select
             name="category"
             value={formData.category}
             onChange={handleChange}
             required
-            className="w-full border rounded px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">Select Category</option>
-            {categories.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
+            {categories.map((cat) => (
+              <option key={cat._id} value={cat._id}>
+                {cat.name}
               </option>
             ))}
           </select>
-
           {formData.category && (
-            <p className="text-sm mt-1">
-              Min Stock: <strong>{categoryMinStock}</strong>
+            <p className="mt-1 text-sm text-gray-700">
+              Minimum Stock for this category: <strong>{categoryMinStock}</strong>
             </p>
           )}
         </div>
 
         {/* Make */}
         <div>
-          <label>Make</label>
+          <label className="block mb-1 font-medium text-gray-700">Make</label>
           <div className="flex gap-2">
             <select
               name="make"
               value={formData.make}
               onChange={handleChange}
-              className="flex-1 border rounded px-3 py-2"
+              className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               <option value="">Select Make</option>
-              {makes.map((m) => (
-                <option key={m} value={m}>
+              {makes.map((m, i) => (
+                <option key={i} value={m}>
                   {m}
                 </option>
               ))}
             </select>
-
             <input
               type="text"
               placeholder="New Make"
               value={newMake}
               onChange={(e) => setNewMake(e.target.value)}
-              className="border rounded px-3 py-2 w-32"
+              className="border rounded-lg px-3 py-2 w-32 focus:ring-2 focus:ring-green-500"
             />
-
             <button
               type="button"
               onClick={() => handleAddMakeOrModel("make")}
-              className="bg-green-500 text-white px-3 rounded"
+              className="bg-green-500 text-white px-3 rounded-lg hover:bg-green-600"
             >
               +
             </button>
@@ -294,34 +319,32 @@ export default function AddProduct() {
 
         {/* Model */}
         <div>
-          <label>Model (optional)</label>
+          <label className="block mb-1 font-medium text-gray-700">Model (Optional)</label>
           <div className="flex gap-2">
             <select
               name="model"
               value={formData.model}
               onChange={handleChange}
-              className="flex-1 border rounded px-3 py-2"
+              className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               <option value="">Select Model</option>
-              {models.map((m) => (
-                <option key={m} value={m}>
+              {models.map((m, i) => (
+                <option key={i} value={m}>
                   {m}
                 </option>
               ))}
             </select>
-
             <input
               type="text"
               placeholder="New Model"
               value={newModel}
               onChange={(e) => setNewModel(e.target.value)}
-              className="border rounded px-3 py-2 w-32"
+              className="border rounded-lg px-3 py-2 w-32 focus:ring-2 focus:ring-green-500"
             />
-
             <button
               type="button"
               onClick={() => handleAddMakeOrModel("model")}
-              className="bg-green-500 text-white px-3 rounded"
+              className="bg-green-500 text-white px-3 rounded-lg hover:bg-green-600"
             >
               +
             </button>
@@ -330,88 +353,75 @@ export default function AddProduct() {
 
         {/* Quantity */}
         <div>
-          <label>Quantity Received</label>
+          <label className="block mb-1 font-medium text-gray-700">Quantity Received</label>
           <input
             type="number"
             name="quantity"
             value={formData.quantity}
             onChange={handleChange}
-            className={`w-full border rounded px-3 py-2 ${
-              errors.quantity ? "border-red-500" : ""
+            className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
+              errors.quantity ? "border-red-500 focus:ring-red-400" : "focus:ring-blue-500"
             }`}
+            required
           />
           {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity}</p>}
         </div>
 
         {/* Cost */}
         <div>
-          <label>Cost</label>
+          <label className="block mb-1 font-medium text-gray-700">Cost (with Tax)</label>
           <input
             type="number"
+            step="0.01"
             name="cost"
             value={formData.cost}
             onChange={handleChange}
-            className={`w-full border rounded px-3 py-2 ${
-              errors.cost ? "border-red-500" : ""
+            className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
+              errors.cost ? "border-red-500 focus:ring-red-400" : "focus:ring-blue-500"
             }`}
+            required
           />
           {errors.cost && <p className="text-red-500 text-sm">{errors.cost}</p>}
         </div>
 
         {/* Date of Receipt */}
         <div>
-          <label>Date of Receipt</label>
+          <label className="block mb-1 font-medium text-gray-700">Date of Receipt</label>
           <input
             type="date"
             name="dateOfReceipt"
             value={formData.dateOfReceipt}
             onChange={handleChange}
-            max={today}
-            className="w-full border rounded px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
             required
           />
-          {errors.receiptDate && <p className="text-red-500 text-sm">{errors.receiptDate}</p>}
         </div>
 
         {/* MIRV Date */}
         <div>
-          <label>MIRV Date</label>
+          <label className="block mb-1 font-medium text-gray-700">MIRV Cleared Date</label>
           <input
             type="date"
             name="mirvDate"
             value={formData.mirvDate}
             onChange={handleChange}
-            max={today}
-            className={`w-full border rounded px-3 py-2 ${
-              errors.mirvDate ? "border-red-500" : ""
+            className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
+              errors.mirvDate ? "border-red-500 focus:ring-red-400" : "focus:ring-blue-500"
             }`}
+            required
           />
           {errors.mirvDate && <p className="text-red-500 text-sm">{errors.mirvDate}</p>}
         </div>
 
-        {/* Update Date */}
-        <div>
-          <label>Product Updating Date</label>
-          <input
-            type="date"
-            name="productUpdatingDate"
-            value={formData.productUpdatingDate}
-            readOnly
-            className="w-full border rounded px-3 py-2 bg-gray-100"
-          />
-        </div>
-
-       
-      
         {/* Location */}
         <div>
-          <label>Location</label>
+          <label className="block mb-1 font-medium text-gray-700">Location</label>
           <select
             name="location"
-            value={formData.location}
+            value={formData.location || selectedLocation}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
             required
+            className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select Location</option>
             {locations.map((loc) => (
@@ -422,32 +432,44 @@ export default function AddProduct() {
           </select>
         </div>
 
-        {/* Add new location */}
+        {/* Product Updating Date */}
         <div>
-          <label>Add New Location</label>
+          <label className="block mb-1 font-medium text-gray-700">Product Updating Date</label>
+          <input
+            type="date"
+            name="productUpdatingDate"
+            value={formData.productUpdatingDate}
+            readOnly
+            className="w-full border rounded-lg px-3 py-2 bg-gray-100 text-gray-600"
+          />
+        </div>
+
+        {/* Add New Location */}
+        <div>
+          <label className="block mb-1 font-medium text-gray-700">Add New Location</label>
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="New Location"
+              placeholder="New Location Name"
               value={newLocationName}
               onChange={(e) => setNewLocationName(e.target.value)}
-              className="flex-1 border rounded px-3 py-2"
+              className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500"
             />
             <button
               type="button"
               onClick={handleAddLocation}
-              className="bg-green-500 text-white px-4 rounded"
+              className="bg-green-500 text-white px-4 rounded-lg hover:bg-green-600"
             >
-              Add
+              ➕ Add
             </button>
           </div>
         </div>
 
-        {/* Submit button */}
-        <div className="col-span-2">
+        {/* Submit */}
+        <div className="md:col-span-2">
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition"
           >
             ➕ Add Product
           </button>
@@ -456,5 +478,3 @@ export default function AddProduct() {
     </div>
   );
 }
-
-

@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
@@ -11,14 +9,16 @@ export default function AddStaff() {
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [editingId, setEditingId] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [toastMsg, setToastMsg] = useState(""); // toast message
+  const [toastType, setToastType] = useState("success"); // success / error
 
   const fetchStaff = async () => {
     try {
       const res = await axios.get(`${API}/all`);
-      const filteredStaff = res.data.filter((s) => s.role !== "admin"); // hide admin
+      const filteredStaff = res.data.filter((s) => s.role !== "admin");
       setStaffList(filteredStaff);
     } catch (err) {
-      console.error("Error loading staff:", err);
+      showToast("Failed to load staff", "error");
     }
   };
 
@@ -26,25 +26,33 @@ export default function AddStaff() {
     fetchStaff();
   }, []);
 
+  const showToast = (msg, type = "success") => {
+    setToastMsg(msg);
+    setToastType(type);
+    setTimeout(() => setToastMsg(""), 3000); // hide after 3s
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      let res;
       if (editingId) {
-        await axios.put(`${API}/${editingId}`, formData);
+        res = await axios.put(`${API}/${editingId}`, formData);
+        showToast(res.data.message || "Staff updated successfully ✅", "success");
         setEditingId(null);
       } else {
-        await axios.post(`${API}/add`, formData);
+        res = await axios.post(`${API}/add`, formData);
+        showToast(res.data.message || "Staff added successfully ✅", "success");
       }
       setFormData({ username: "", password: "" });
       setShowPassword(false);
       fetchStaff();
     } catch (err) {
-      alert(err.response?.data?.message || "Error saving staff");
+      showToast(err.response?.data?.message || "Error saving staff ❌", "error");
     }
   };
 
   const handleEdit = (staff) => {
-    // Populate existing username and password
     setFormData({ username: staff.username, password: staff.password });
     setEditingId(staff._id);
     setShowPassword(false);
@@ -59,16 +67,28 @@ export default function AddStaff() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this staff member?")) return;
     try {
-      await axios.delete(`${API}/${id}`);
+      const res = await axios.delete(`${API}/${id}`);
+      showToast(res.data.message || "Staff deleted successfully ✅", "success");
       fetchStaff();
     } catch (err) {
-      alert("Error deleting staff");
+      showToast(err.response?.data?.message || "Error deleting staff ❌", "error");
     }
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="p-6 bg-white rounded-lg shadow-md relative">
       <h2 className="text-xl font-bold mb-4">Staff Management</h2>
+
+      {/* Toast */}
+      {toastMsg && (
+        <div
+          className={`absolute top-0 right-0 m-4 px-4 py-2 rounded shadow text-white ${
+            toastType === "success" ? "bg-green-500" : "bg-red-500"
+          }`}
+        >
+          {toastMsg}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="flex gap-4 mb-6 items-center">
         <input
@@ -102,7 +122,9 @@ export default function AddStaff() {
         <button
           type="submit"
           className={`px-4 py-2 rounded text-white ${
-            editingId ? "bg-green-500 hover:bg-green-600" : "bg-blue-600 hover:bg-blue-700"
+            editingId
+              ? "bg-green-500 hover:bg-green-600"
+              : "bg-blue-600 hover:bg-blue-700"
           }`}
         >
           {editingId ? "Update" : "Add"}

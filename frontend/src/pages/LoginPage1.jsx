@@ -52,27 +52,63 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-blue-900 to-blue-700">
       <div className="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md">
-        <h1 className="text-4xl font-extrabold text-blue-900 mb-6 text-center">ASTRA</h1>
+
+        {/* Title + Full Form */}
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-extrabold text-blue-900 tracking-wide">ASTRA</h1>
+          <p className="text-sm text-blue-500 font-medium tracking-wide mt-1">
+            Automated Stock Tracking & Reporting Application
+          </p>
+        </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} className="p-3 border rounded" required />
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="p-3 border rounded"
+            required
+          />
           <div className="relative">
-            <input type={showPassword ? "text" : "password"} placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="p-3 border rounded w-full" required />
-            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-500" onClick={() => setShowPassword(!showPassword)}>
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="p-3 border rounded w-full"
+              required
+            />
+            <span
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-500"
+              onClick={() => setShowPassword(!showPassword)}
+            >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </span>
           </div>
-          <button type="submit" disabled={loading} className="bg-orange-500 text-white py-3 rounded font-bold hover:bg-orange-600">{loading ? "Logging in..." : "Login"}</button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-orange-500 text-white py-3 rounded font-bold hover:bg-orange-600"
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
         </form>
 
-        {/* Temporary credentials display */}
+        {/* Temporary credentials
         <div className="mt-6 p-4 bg-gray-100 rounded">
           <h3 className="font-bold text-gray-700 mb-2">Temporary Credentials:</h3>
           <ul className="text-sm text-gray-600 space-y-1">
-            <li>Staff: <span className="font-medium">staff1</span> / <span className="font-medium">staff@isro</span></li>
-            <li>Admin: <span className="font-medium">admin</span> / <span className="font-medium">admin123</span></li>
-          </ul>
-        </div>
+            <li>
+              Staff: <span className="font-medium">staff1</span> /
+              <span className="font-medium"> staff@isro</span>
+            </li>
+            <li>
+              Admin: <span className="font-medium">admin</span> /
+              <span className="font-medium"> admin123</span>
+            </li>
+          </ul> }
+        </div>*/}
       </div>
     </div>
   );

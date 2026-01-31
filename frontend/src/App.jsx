@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useUser } from "./context/UserContext";
 import Layout from "./components/Layout";
@@ -13,12 +14,10 @@ import Orders from "./pages/Orders";
 import LogoutPage from "./pages/LogoutPage";
 import AddStaff from "./pages/Add_Staff";
 import Profile from "./pages/Profile";
-import ConsumptionHistory from "./pages/ConsumptionHistory";
-
+import PurchaseOrder from "./pages/PurchaseOrders";
 
 export default function App() {
   const { user } = useUser();
-
   const isLoggedIn = !!user?.token;
   const isAdmin = user?.role === "admin";
 
@@ -31,36 +30,32 @@ export default function App() {
         </Routes>
       ) : (
         <Routes>
-          {/* Login should still be accessible for refresh safety */}
+          {/* Login route */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Layout applied to all authenticated routes */}
+          {/* Authenticated layout */}
           <Route element={<Layout />}>
-            {/* Default home route based on role */}
-            <Route
-              index
-              element={isAdmin ? <Dashboard /> : <DashboardStaff />}
-            />
+            {/* Default home */}
+            <Route index element={isAdmin ? <Dashboard /> : <DashboardStaff />} />
 
-            {/* Routes for all users */}
+            {/* Common routes */}
             <Route path="store" element={<Store />} />
-            <Route path="consume_product" element={<ConsumeProduct />} />
-            <Route path="add_product" element={<AddProduct />} />
-            <Route path="categorypage" element={<CategoryPage />} />
-            <Route path="consume_product/:id" element={<ConsumeProduct />} />
-            <Route path="reportpage" element={<ReportPage />} />
+            <Route path="consume-product" element={<ConsumeProduct />} />
+            <Route path="consume-product/:id" element={<ConsumeProduct />} />
+            <Route path="report" element={<ReportPage />} />
             <Route path="orders" element={<Orders />} />
-            <Route path="logoutpage" element={<LogoutPage />} />
-            <Route path="consumption_history" element={<ConsumptionHistory user={user} />} />
-            <Route path="add_staff" element={<AddStaff />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="logout" element={<LogoutPage />} />
+            <Route path="purchase-order" element={<PurchaseOrder />} />
+            <Route path="add-product" element={<AddProduct />} />
 
+            {/* Admin-only routes */}
+           
+            {isAdmin && <Route path="category" element={<CategoryPage />} />}
+            {isAdmin && <Route path="add-staff" element={<AddStaff />} />}
 
-            {/* Fallback to role-based dashboard */}
-            <Route
-              path="*"
-              element={<Navigate to={isAdmin ? "/" : "/"} replace />}
-            />
+            {/* Fallback for unknown routes */}
+            <Route path="*" element={<Navigate to={isAdmin ? "/" : "/"} replace />} />
           </Route>
         </Routes>
       )}

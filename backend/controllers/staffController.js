@@ -1,6 +1,7 @@
 
 import Staff from "../models/Staff.js";
 import mongoose from "mongoose";
+
 // ✅ Login
 export const loginStaff = async (req, res) => {
   const { username, password } = req.body;
@@ -17,7 +18,6 @@ export const loginStaff = async (req, res) => {
     staff.lastLogin = new Date();
     await staff.save();
 
-    // Return the full staff object (including _id) for staff login
     res.json({ role: "staff", staff });
   } catch (err) {
     console.error("Login error:", err);
@@ -99,4 +99,25 @@ export const deleteStaff = async (req, res) => {
   }
 };
 
+// ✅ Add staff
+export const addStaff = async (req, res) => {
+  try {
+    const { username, password, email, role } = req.body;
+
+    if (!username || !password)
+      return res.status(400).json({ message: "Username and password are required" });
+
+    // Check if username already exists
+    const exists = await Staff.findOne({ username });
+    if (exists) return res.status(400).json({ message: "Username already exists" });
+
+    const newStaff = new Staff({ username, password, email, role });
+    await newStaff.save();
+
+    res.json({ message: "Staff added successfully", staff: newStaff });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error adding staff" });
+  }
+};
 

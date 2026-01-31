@@ -1,4 +1,4 @@
-// src/components/Layout.jsx
+
 import React, { useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import {
@@ -6,7 +6,6 @@ import {
   PlusSquare,
   Package,
   FolderTree,
-  ShoppingCart,
   FileText,
   LogOut,
   ChevronDown,
@@ -19,19 +18,21 @@ export default function Layout() {
   const [issuesOpen, setIssuesOpen] = useState(false);
   const role = localStorage.getItem("role") || "staff";
   const navigate = useNavigate();
-
-  // Sidebar items
   const menuItems = [
-    { name: "Home", icon: <LayoutDashboard size={18} />, path: role === "admin" ? "/" : "/dashboard-staff" },
-    { name: "Add Product", icon: <PlusSquare size={18} />, path: "/add_product" },
-    { name: "Consume Product", icon: <PlusSquare size={18} />, path: "/consume_product" },
-    { name: "Store", icon: <Package size={18} />, path: "/store" },
-    ...(role === "admin" ? [{ name: "Category", icon: <FolderTree size={18} />, path: "/categorypage" }] : []),
-    ...(role === "admin" ? [{ name: "Add Staff", icon: <FolderTree size={18} />, path: "/add_staff" }] : []),
-    { name: "Report", icon: <FileText size={18} />, path: "/reportpage" },
-    { name: "Consumption History", icon: <ShoppingCart size={18} />, path: "/orders" },
-    { name: "LOGOUT", icon: <LogOut size={18} />, path: "/LogoutPage" },
-  ];
+  { name: "Home", icon: <LayoutDashboard size={18} />, path: "/" },
+    { name: "Add Product", icon: <PlusSquare size={18} />, path: "/add-product" },
+  { name: "Store", icon: <Package size={18} />, path: "/store" },
+  { name: "Consume Product", icon: <PlusSquare size={18} />, path: "/consume-product" },
+  { name: "Report", icon: <FileText size={18} />, path: "/report" },
+  { name: "PO in Pipeline", icon: <FileText size={18} />, path: "/purchase-order" },
+ 
+  ...(role === "admin" ? [
+   
+    { name: "Category", icon: <FolderTree size={18} />, path: "/category" },
+    { name: "Add Staff", icon: <FolderTree size={18} />, path: "/add-staff" }
+  ] : []),
+  { name: "LOGOUT", icon: <LogOut size={18} />, path: "/logout" },
+];
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -86,7 +87,6 @@ export default function Layout() {
           <div className="flex items-center gap-6">
             <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium">{role}</span>
             <Bell className="text-gray-600 cursor-pointer" size={20} />
-            {/* 👇 Profile Icon Clickable */}
             <div
               onClick={() => navigate("/profile")}
               className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-full transition"
